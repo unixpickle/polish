@@ -71,5 +71,6 @@ func SaveScene(path string, obj render3d.Object, rend *render3d.RecursiveRayTrac
 	renderAt(0, ImageSize, 128)
 	renderAt(ImageSize, ImageSize, 1024)
 
+	RandomizeBrightness(grid)
 	grid.Save(path)
 }
