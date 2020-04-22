@@ -151,6 +151,8 @@ func NewTexturedObject(obj render3d.Object, texture image.Image) *TexturedObject
 		Specular: specular,
 		Diffuse:  diffuse,
 		Texture:  texture,
+		XBasis:   xBasis,
+		YBasis:   yBasis,
 	}
 }
 
