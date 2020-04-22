@@ -8,14 +8,10 @@ import (
 	"github.com/unixpickle/model3d/render3d"
 )
 
-func RandomizeBrightness(img *render3d.Image) {
+func BrightnessScale(img *render3d.Image) float64 {
 	target := math.Min(0.9, math.Max(0.1, rand.NormFloat64()*0.1+0.3))
 	median := math.Max(1e-5, quantileBrightness(img))
-	if median > target {
-		// Don't darken images with very bright lights.
-		return
-	}
-	img.Scale(target / median)
+	return math.Max(1.0, target/median)
 }
 
 func quantileBrightness(img *render3d.Image) float64 {

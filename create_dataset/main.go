@@ -57,20 +57,25 @@ func SaveScene(path string, obj render3d.Object, rend *render3d.RecursiveRayTrac
 	rend.MaxDepth = 10
 	rend.Cutoff = 1e-4
 
-	grid := render3d.NewImage(ImageSize*2, ImageSize*2)
+	grid := render3d.NewImage(ImageSize*2, ImageSize*5)
 
-	renderAt := func(x, y, samples int) {
+	renderAt := func(x, y, samples int) float64 {
 		rend.NumSamples = samples
 		img := render3d.NewImage(ImageSize, ImageSize)
 		rend.Render(img, obj)
 		grid.CopyFrom(img, x, y)
+		return BrightnessScale(img)
 	}
 
-	renderAt(0, 0, 16)
-	renderAt(ImageSize, 0, 32)
-	renderAt(0, ImageSize, 128)
-	renderAt(ImageSize, ImageSize, 2048)
+	for i, samples := range []int{1, 16, 32, 128} {
+		for j := 0; j < 2; j++ {
+			renderAt(j*ImageSize, i*ImageSize, samples)
+		}
+	}
 
-	RandomizeBrightness(grid)
+	renderAt(0, ImageSize*4, 512)
+	scale := renderAt(ImageSize, ImageSize*4, 2048)
+
+	grid.Scale(scale)
 	grid.Save(path)
 }
