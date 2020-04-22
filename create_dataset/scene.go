@@ -33,9 +33,7 @@ func RandomScene(models, images []string) (render3d.Object, *render3d.RecursiveR
 		tris, err := model3d.ReadOFF(r)
 		essentials.Must(err)
 		mesh := model3d.NewMeshTriangles(tris)
-		rotation := model3d.NewMatrix3Rotation(model3d.NewCoord3DRandUnit(),
-			rand.Float64()*math.Pi*2)
-		mesh = mesh.MapCoords(rotation.MulColumn)
+		mesh = randomRotation(mesh)
 		mesh = layout.PlaceMesh(mesh)
 		objects = append(objects, RandomizeMaterial(mesh, images))
 	}
@@ -58,6 +56,33 @@ func RandomScene(models, images []string) (render3d.Object, *render3d.RecursiveR
 		FocusPoints:     focusPoints,
 		FocusPointProbs: focusProbs,
 	}
+}
+
+func randomRotation(m *model3d.Mesh) *model3d.Mesh {
+	var rotation *model3d.Matrix3
+	if rand.Intn(3) == 0 {
+		// Completely random rotation.
+		rotation = model3d.NewMatrix3Rotation(model3d.NewCoord3DRandUnit(),
+			rand.Float64()*math.Pi*2)
+	} else {
+		// Axis swap rotation
+		a1 := rand.Intn(3)
+		a2 := rand.Intn(2)
+		if a2 >= a1 {
+			a2++
+		}
+		rotation = &model3d.Matrix3{}
+		for i := 0; i < 3; i++ {
+			if i == a1 {
+				rotation[i*3+a2] = 1
+			} else if i == a2 {
+				rotation[i*3+a1] = 1
+			} else {
+				rotation[i*3+i] = 1
+			}
+		}
+	}
+	return m.MapCoords(rotation.MulColumn)
 }
 
 // RandomSceneLayout samples a SceneLayout from some
