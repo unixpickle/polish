@@ -11,11 +11,14 @@ import (
 type Args struct {
 	ModelNetPath string
 	ImagesPath   string
+
+	OutputDir string
 }
 
 func (a *Args) Parse() {
 	flag.StringVar(&a.ModelNetPath, "modelnet", "", "path to ModelNet-40 dataset")
 	flag.StringVar(&a.ImagesPath, "images", "", "path to (recursive) texture library")
+	flag.StringVar(&a.OutputDir, "outdir", "../data", "dataset output directory")
 	flag.Parse()
 
 	var missingArgs []string
