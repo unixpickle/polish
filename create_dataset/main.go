@@ -19,7 +19,7 @@ func main() {
 	essentials.Must(err)
 
 	obj, rend := RandomScene(trainModels, images)
-	rend.NumSamples = 10
+	rend.NumSamples = 100
 	rend.Antialias = 1.0
 	rend.MaxDepth = 10
 	rend.Cutoff = 1e-4

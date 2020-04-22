@@ -65,7 +65,7 @@ func RandomScene(models, images []string) (render3d.Object, *render3d.RecursiveR
 func RandomSceneLayout() SceneLayout {
 	return RoomLayout{
 		Width: rand.Float64()*2.0 + 0.5,
-		Depth: rand.Float64()*20.0 + 5.0,
+		Depth: rand.Float64()*3.0 + 2.0,
 	}
 }
 
@@ -134,7 +134,7 @@ func (r RoomLayout) CreateLight() render3d.Object {
 	return &render3d.ColliderObject{
 		Collider: shape,
 		Material: &render3d.LambertMaterial{
-			EmissionColor: render3d.NewColor((rand.Float64() + 0.1) * 10),
+			EmissionColor: render3d.NewColor((rand.Float64() + 0.1) * 20),
 		},
 	}
 }
@@ -162,7 +162,7 @@ func (r RoomLayout) CreateBackdrop() []*model3d.Mesh {
 }
 
 func (r RoomLayout) PlaceMesh(m *model3d.Mesh) *model3d.Mesh {
-	placeMin := model3d.Coord3D{X: -r.Width / 2}
+	placeMin := model3d.Coord3D{X: -r.Width / 2, Y: -r.Depth / 4}
 	placeMax := model3d.Coord3D{X: r.Width / 2, Y: r.Depth / 2, Z: 1}
 	return placeInBounds(placeMin, placeMax, m)
 }
@@ -178,7 +178,11 @@ func placeInBounds(placeMin, placeMax model3d.Coord3D, m *model3d.Mesh) *model3d
 	min, max = m.Min(), m.Max()
 	translateMin := placeMin.Sub(min)
 	translateMax := placeMax.Sub(max)
-	translate := uniformRandom().Mul(translateMax.Sub(translateMin))
+	translate := uniformRandom().Mul(translateMax.Sub(translateMin)).Add(translateMin)
+
+	// Drop Z to minimum.
+	translate.Z = translateMin.Z
+
 	return m.MapCoords(translate.Add)
 }
 
