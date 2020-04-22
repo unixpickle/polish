@@ -31,5 +31,6 @@ func main() {
 
 	img := render3d.NewImage(300, 300)
 	rend.Render(img, obj)
+	RandomizeBrightness(img)
 	img.Save("render.png")
 }
