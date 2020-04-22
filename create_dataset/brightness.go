@@ -11,6 +11,10 @@ import (
 func RandomizeBrightness(img *render3d.Image) {
 	target := math.Min(0.9, math.Max(0.1, rand.NormFloat64()*0.1+0.3))
 	median := math.Max(1e-5, quantileBrightness(img))
+	if median > target {
+		// Don't darken images with very bright lights.
+		return
+	}
 	img.Scale(target / median)
 }
 
