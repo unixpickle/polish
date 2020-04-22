@@ -15,7 +15,7 @@ import (
 func RandomScene(models, images []string) (render3d.Object, *render3d.RecursiveRayTracer) {
 	layout := RandomSceneLayout()
 	numObjects := rand.Intn(10) + 1
-	numLights := rand.Intn(5) + 1
+	numLights := rand.Intn(10) + 1
 
 	var objects render3d.JoinedObject
 	var focusPoints []render3d.FocusPoint
@@ -39,13 +39,9 @@ func RandomScene(models, images []string) (render3d.Object, *render3d.RecursiveR
 	}
 
 	for i := 0; i < numLights; i++ {
-		light := layout.CreateLight()
-		min, max := light.Min(), light.Max()
+		light, focusPoint := layout.CreateLight()
 		objects = append(objects, light)
-		focusPoints = append(focusPoints, &render3d.SphereFocusPoint{
-			Center: min.Mid(max),
-			Radius: min.Dist(max) / 2,
-		})
+		focusPoints = append(focusPoints, focusPoint)
 		focusProbs = append(focusProbs, 0.3/float64(numLights))
 	}
 
@@ -88,9 +84,13 @@ func randomRotation(m *model3d.Mesh) *model3d.Mesh {
 // RandomSceneLayout samples a SceneLayout from some
 // distribution.
 func RandomSceneLayout() SceneLayout {
-	return RoomLayout{
-		Width: rand.Float64()*2.0 + 0.5,
-		Depth: rand.Float64()*3.0 + 2.0,
+	if rand.Intn(2) == 0 {
+		return RoomLayout{
+			Width: rand.Float64()*2.0 + 0.5,
+			Depth: rand.Float64()*3.0 + 2.0,
+		}
+	} else {
+		return WorldLayout{}
 	}
 }
 
@@ -101,7 +101,7 @@ type SceneLayout interface {
 
 	// CreateLight creates a randomized light object that
 	// makes sense in this kind of scene.
-	CreateLight() render3d.Object
+	CreateLight() (render3d.Object, render3d.FocusPoint)
 
 	// CreateBackdrop creates meshes which act as walls of
 	// the scene.
@@ -123,7 +123,7 @@ func (r RoomLayout) CameraInfo() (position, target model3d.Coord3D) {
 	return model3d.Coord3D{Z: 0.5, Y: -r.Depth/2 + 1e-5}, model3d.Coord3D{Z: 0.5, Y: r.Depth / 2}
 }
 
-func (r RoomLayout) CreateLight() render3d.Object {
+func (r RoomLayout) CreateLight() (render3d.Object, render3d.FocusPoint) {
 	var center model3d.Coord3D
 	if rand.Intn(2) == 0 {
 		// Place light on ceiling.
@@ -146,22 +146,28 @@ func (r RoomLayout) CreateLight() render3d.Object {
 	}
 
 	var shape model3d.Collider
+	var focusRadius float64
 	if rand.Intn(2) == 0 {
-		shape = &model3d.Sphere{Center: center, Radius: rand.Float64()*0.2 + 0.05}
+		focusRadius = rand.Float64()*0.2 + 0.05
+		shape = &model3d.Sphere{Center: center, Radius: focusRadius}
 	} else {
 		size := uniformRandom().Scale(0.1).Add(model3d.Coord3D{X: 0.05, Y: 0.05, Z: 0.05})
 		shape = &model3d.Rect{
 			MinVal: center.Sub(size),
 			MaxVal: center.Add(size),
 		}
+		focusRadius = size.Norm()
 	}
 
 	return &render3d.ColliderObject{
-		Collider: shape,
-		Material: &render3d.LambertMaterial{
-			EmissionColor: render3d.NewColor((rand.Float64() + 0.1) * 20),
-		},
-	}
+			Collider: shape,
+			Material: &render3d.LambertMaterial{
+				EmissionColor: render3d.NewColor((rand.Float64() + 0.1) * 20),
+			},
+		}, &render3d.SphereFocusPoint{
+			Center: shape.Min().Mid(shape.Max()),
+			Radius: focusRadius,
+		}
 }
 
 func (r RoomLayout) CreateBackdrop() []*model3d.Mesh {
@@ -213,4 +219,65 @@ func placeInBounds(placeMin, placeMax model3d.Coord3D, m *model3d.Mesh) *model3d
 
 func uniformRandom() model3d.Coord3D {
 	return model3d.Coord3D{X: rand.Float64(), Y: rand.Float64(), Z: rand.Float64()}
+}
+
+// WorldLayout is a layout that places objects in a large
+// hemisphere.
+type WorldLayout struct{}
+
+func (w WorldLayout) CameraInfo() (position, target model3d.Coord3D) {
+	return model3d.Coord3D{Y: -20, Z: 5}, model3d.Coord3D{Y: 0, Z: 5}
+}
+
+func (w WorldLayout) CreateLight() (render3d.Object, render3d.FocusPoint) {
+	center := model3d.NewCoord3DRandUnit().Scale(70)
+	if center.Z < 0 {
+		center.Z = -center.Z
+	}
+	if center.Y > 0 {
+		// Usually, we want the lights behind the camera.
+		if rand.Intn(5) != 0 {
+			center.Y *= -1
+		}
+	}
+	shape := &model3d.Sphere{Center: center, Radius: rand.Float64()*5.0 + 2.0}
+	r2 := shape.Radius * shape.Radius
+	return &render3d.ColliderObject{
+			Collider: shape,
+			Material: &render3d.LambertMaterial{
+				EmissionColor: render3d.NewColor((rand.Float64() + 0.5) * 200 / r2),
+			},
+		}, &render3d.SphereFocusPoint{
+			Center: shape.Center,
+			Radius: shape.Radius,
+		}
+}
+
+func (w WorldLayout) CreateBackdrop() []*model3d.Mesh {
+	r := 100.0
+	p1 := model3d.Coord3D{X: -r, Y: -r}
+	p2 := model3d.Coord3D{X: -r, Y: r}
+	p3 := model3d.Coord3D{X: r, Y: r}
+	p4 := model3d.Coord3D{X: r, Y: -r}
+
+	floor := model3d.NewMesh()
+	floor.Add(&model3d.Triangle{p1, p2, p3})
+	floor.Add(&model3d.Triangle{p1, p3, p4})
+
+	dome := model3d.NewMeshPolar(func(g model3d.GeoCoord) float64 {
+		return r
+	}, 100)
+	dome.Iterate(func(t *model3d.Triangle) {
+		if t.Max().Z < 0 {
+			dome.Remove(t)
+		}
+	})
+
+	return []*model3d.Mesh{floor, dome}
+}
+
+func (w WorldLayout) PlaceMesh(m *model3d.Mesh) *model3d.Mesh {
+	min := model3d.Coord3D{X: -7, Y: -7}
+	max := model3d.Coord3D{X: 7, Y: 7, Z: 7}
+	return placeInBounds(min, max, m)
 }
