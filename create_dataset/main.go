@@ -1,11 +1,16 @@
 package main
 
 import (
+	"math/rand"
+	"time"
+
 	"github.com/unixpickle/essentials"
 	"github.com/unixpickle/model3d/render3d"
 )
 
 func main() {
+	rand.Seed(time.Now().UnixNano())
+
 	var args Args
 	args.Parse()
 
