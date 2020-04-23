@@ -71,6 +71,9 @@ func SaveScene(path string, obj render3d.Object, rend *render3d.RecursiveRayTrac
 	rend.MaxDepth = 10
 	rend.Cutoff = 1e-4
 
+	variance := rend.RayVariance(obj, 200, 200, 5)
+	log.Printf("Creating scene (var=%f): %s", variance, path)
+
 	grid := render3d.NewImage(ImageSize*2, ImageSize*5)
 
 	renderAt := func(x, y, samples int) float64 {
