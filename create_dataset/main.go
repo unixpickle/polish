@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -27,12 +28,13 @@ func main() {
 
 	CreateOutput(args.OutputDir)
 
+	trainDir := filepath.Join(args.OutputDir, "train")
+	testDir := filepath.Join(args.OutputDir, "test")
 	for i := 0; true; i++ {
-		outName := fmt.Sprintf("%05d.png", i)
 		obj, rend := RandomScene(trainModels, images)
-		SaveScene(filepath.Join(args.OutputDir, "train", outName), obj, rend)
+		SaveScene(NextImagePath(trainDir), obj, rend)
 		obj, rend = RandomScene(testModels, images)
-		SaveScene(filepath.Join(args.OutputDir, "test", outName), obj, rend)
+		SaveScene(NextImagePath(testDir), obj, rend)
 	}
 }
 
@@ -50,6 +52,18 @@ func CreateOutput(outDir string) {
 			essentials.Must(err)
 		}
 	}
+}
+
+func NextImagePath(dir string) string {
+	for i := 0; true; i++ {
+		outName := fmt.Sprintf("%05d.png", i)
+		newPath := filepath.Join(dir, outName)
+		if _, err := os.Stat(newPath); os.IsNotExist(err) {
+			return newPath
+		}
+	}
+	essentials.Die("could not allocate a new output file")
+	return ""
 }
 
 func SaveScene(path string, obj render3d.Object, rend *render3d.RecursiveRayTracer) {
