@@ -15,6 +15,7 @@ def all_models():
     return {
         'linear': LinearDenoiser(),
         'shallow': ShallowDenoiser(),
+        'deep': DeepDenoiser(),
     }
 
 
@@ -69,4 +70,34 @@ class ShallowDenoiser(Denoiser):
         x = self.conv1(x)
         x = F.relu(x)
         x = self.conv2(x)
+        return x
+
+
+class DeepDenoiser(Denoiser):
+    """
+    A denoiser that has multiple hidden layers.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.conv1 = nn.Conv2d(3, 32, 5, padding=2, stride=2)
+        self.conv2 = nn.Conv2d(32, 64, 3, padding=1, stride=2)
+        self.conv3 = nn.Conv2d(64, 64, 3, padding=1)
+        self.deconv1 = nn.ConvTranspose2d(64, 32, 4, padding=1, stride=2)
+        self.deconv2 = nn.ConvTranspose2d(32, 3, 4, padding=1, stride=2)
+
+    @property
+    def dim_lcd(self):
+        return 4
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = F.relu(x)
+        x = self.conv2(x)
+        x = F.relu(x)
+        x = self.conv3(x)
+        x = F.relu(x)
+        x = self.deconv1(x)
+        x = F.relu(x)
+        x = self.deconv2(x)
         return x
