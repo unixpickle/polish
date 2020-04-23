@@ -1,6 +1,8 @@
 import argparse
 import os
 
+from PIL import Image
+import numpy as np
 import torch
 import torch.optim as optim
 
@@ -35,7 +37,8 @@ def main():
 
         train_loss = torch.mean(torch.abs(model(train_in) - train_out))
         with torch.no_grad():
-            test_loss = torch.mean(torch.abs(model(test_in) - test_out))
+            test_actual_out = model(test_in)
+            test_loss = torch.mean(torch.abs(test_actual_out - test_out))
 
         opt.zero_grad()
         train_loss.backward()
@@ -43,6 +46,7 @@ def main():
 
         if not i % args.save_interval:
             torch.save(model.state_dict(), args.model_path)
+            save_rendering(test_in, test_actual_out)
 
         print('step %d: train=%f test=%f' % (i, train_loss.item(), test_loss.item()))
         i += 1
@@ -53,6 +57,15 @@ def create_datasets(data_dir, batch):
     train_loader = torch.utils.data.DataLoader(PolishDataset(data_dir, split='train'), **kwargs)
     test_loader = torch.utils.data.DataLoader(PolishDataset(data_dir, split='test'), **kwargs)
     return train_loader, test_loader
+
+
+def save_rendering(inputs, outputs):
+    joined = torch.cat([inputs, outputs], dim=-1).permute(0, 2, 3, 1).contiguous()
+    joined = joined.view(-1, *joined.shape[2:])
+    arr = joined.detach().cpu().numpy()
+    arr = np.clip(arr, 0, 1)
+    arr = (arr * 255).astype('uint8')
+    Image.fromarray(arr).save('samples.png')
 
 
 def arg_parser():

@@ -1,3 +1,4 @@
 data/
 *.pt
 __pycache__/
+samples.png
