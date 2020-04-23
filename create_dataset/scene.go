@@ -267,6 +267,24 @@ func (w WorldLayout) CreateBackdrop() []*model3d.Mesh {
 	dome := model3d.NewMeshPolar(func(g model3d.GeoCoord) float64 {
 		return r
 	}, 100)
+
+	// Add more resolution where you can see it.
+	for i := 0; i < 2; i++ {
+		subdiv := model3d.NewSubdivider()
+		subdiv.AddFiltered(dome, func(p1, p2 model3d.Coord3D) bool {
+			for _, p := range []model3d.Coord3D{p1, p2} {
+				if p.Y > r*0.9 {
+					return true
+				}
+			}
+			return false
+		})
+		subdiv.Subdivide(dome, func(p1, p2 model3d.Coord3D) model3d.Coord3D {
+			mp := p1.Mid(p2)
+			return mp.Normalize().Scale(r)
+		})
+	}
+
 	dome.Iterate(func(t *model3d.Triangle) {
 		if t.Max().Z < 0 {
 			dome.Remove(t)
