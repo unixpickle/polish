@@ -30,6 +30,20 @@ func RandomizeMaterial(m *model3d.Mesh, images []string) render3d.Object {
 	}
 }
 
+// RandomizeWallMaterial is like RandomizeMaterial, but
+// with a restricted class of materials for boundaries of
+// the scene.
+func RandomizeWallMaterial(m *model3d.Mesh, images []string) render3d.Object {
+	switch rand.Intn(10) {
+	case 0:
+		return createMirror(m)
+	case 1, 2, 3, 4, 5:
+		return createColored(m)
+	default:
+		return createTextured(m, images)
+	}
+}
+
 func createTransparent(m *model3d.Mesh) render3d.Object {
 	m = RepairMesh(m)
 

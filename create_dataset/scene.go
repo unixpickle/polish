@@ -22,7 +22,7 @@ func RandomScene(models, images []string) (render3d.Object, *render3d.RecursiveR
 	var focusProbs []float64
 
 	for _, wall := range layout.CreateBackdrop() {
-		objects = append(objects, RandomizeMaterial(wall, images))
+		objects = append(objects, RandomizeWallMaterial(wall, images))
 	}
 
 	for i := 0; i < numObjects; i++ {
