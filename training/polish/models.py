@@ -1,0 +1,72 @@
+"""
+Machine learning models for denoising.
+"""
+
+from abc import abstractproperty
+
+import torch.nn as nn
+import torch.nn.functional as F
+
+
+def all_models():
+    """
+    Get a dict of supported models.
+    """
+    return {
+        'linear': LinearDenoiser(),
+        'shallow': ShallowDenoiser(),
+    }
+
+
+class Denoiser(nn.Module):
+    @abstractproperty
+    def dim_lcd(self):
+        """
+        Get a factor that must divide both the width and
+        height of input images.
+        """
+        pass
+
+
+class LinearDenoiser(Denoiser):
+    """
+    This is the simplest possible denoiser, consisting of
+    one convolutional filter.
+    """
+
+    def __init__(self, kernel_size=7):
+        super().__init__()
+        if not kernel_size % 2:
+            raise ValueError('kernel_size must be odd')
+        self.conv = nn.Conv2d(3, 3, kernel_size, padding=kernel_size//2)
+
+    @property
+    def dim_lcd(self):
+        return 1
+
+    def forward(self, x):
+        return self.conv(x)
+
+
+class ShallowDenoiser(Denoiser):
+    """
+    A denoiser that has one hidden layer and doesn't
+    require any spatial LCD.
+    """
+
+    def __init__(self, kernel_size=5, hidden_size=32):
+        super().__init__()
+        if not kernel_size % 2:
+            raise ValueError('kernel_size must be odd')
+        self.conv1 = nn.Conv2d(3, hidden_size, kernel_size, padding=kernel_size//2)
+        self.conv2 = nn.Conv2d(hidden_size, 3, kernel_size, padding=kernel_size//2)
+
+    @property
+    def dim_lcd(self):
+        return 1
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = F.relu(x)
+        x = self.conv2(x)
+        return x
