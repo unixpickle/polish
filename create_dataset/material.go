@@ -79,6 +79,8 @@ func createTransparent(m *model3d.Mesh) render3d.Object {
 }
 
 func createMirror(m *model3d.Mesh) render3d.Object {
+	m = RepairOrKeep(m)
+
 	return &FixNormalsObject{
 		Object: &render3d.ColliderObject{
 			Collider: model3d.MeshToCollider(m),
@@ -91,6 +93,8 @@ func createMirror(m *model3d.Mesh) render3d.Object {
 }
 
 func createColored(m *model3d.Mesh) render3d.Object {
+	m = RepairOrKeep(m)
+
 	color := render3d.NewColorRGB(rand.Float64(), rand.Float64(), rand.Float64())
 	diffuse := rand.Float64()
 
@@ -116,6 +120,8 @@ func createColored(m *model3d.Mesh) render3d.Object {
 }
 
 func createTextured(m *model3d.Mesh, images []string) render3d.Object {
+	m = RepairOrKeep(m)
+
 	path := images[rand.Intn(len(images))]
 	r, err := os.Open(path)
 	essentials.Must(err)
