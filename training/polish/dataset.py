@@ -8,22 +8,30 @@ import torch.utils.data as data
 
 
 class PolishDataset(data.IterableDataset):
-    def __init__(self, data_dir, split='train', crop_size=192):
+    def __init__(self, data_dir, split='train', crop_size=192, cache=True):
+        self.cache = cache
         self.crop_size = crop_size
         self.listing = [os.path.join(data_dir, split, x)
                         for x in os.listdir(os.path.join(data_dir, split))
                         if x.endswith('.png')]
 
     def __iter__(self):
+        cache = None
+        if self.cache:
+            cache = {p: np.array(Image.open(p)) for p in self.listing}
         paths = self.listing.copy()
         while True:
             random.shuffle(paths)
             for path in paths:
-                yield self.get_sample(path)
+                yield self.get_sample(path, cache)
 
-    def get_sample(self, img_path):
+    def get_sample(self, img_path, cache):
         idx = random.randrange(7)
-        img = np.array(Image.open(img_path)).astype('float32') / 255.0
+        if cache is None:
+            img = np.array(Image.open(img_path))
+        else:
+            img = cache[img_path]
+        img = img.astype('float32') / 255.0
         img_size = img.shape[1] // 2
         cx = random.randrange(img_size - self.crop_size)
         cy = random.randrange(img_size - self.crop_size)
