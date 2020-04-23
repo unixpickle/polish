@@ -4,27 +4,36 @@ import os
 import torch
 import torch.optim as optim
 
+from polish.baseline import identity_baseline
 from polish.dataset import PolishDataset
 from polish.models import all_models
 
 
 def main():
+    use_cuda = torch.cuda.is_available()
+    device = torch.device('cuda') if use_cuda else torch.device('cpu')
+
     args = arg_parser().parse_args()
+
     models = all_models()
     if args.model_type not in models:
         raise ValueError('unknown model: ' + args.model_type)
     model = models[args.model_type]
     if os.path.exists(args.model_path):
         model.load_state_dict(torch.load(args.model_path, map_location='cpu'))
+    model.to(device)
 
     trains, tests = create_datasets(args.data, args.batch)
+    print('baseline: train %f, test %f' % (identity_baseline(trains), identity_baseline(tests)))
 
     opt = optim.Adam(model.parameters(), lr=args.lr)
 
     i = 0
     for (train_in, train_out), (test_in, test_out) in zip(trains, tests):
-        train_loss = torch.mean(torch.abs(model(train_in) - train_out))
+        train_in, train_out = train_in.to(device), train_out.to(device)
+        test_in, test_out = test_in.to(device), test_out.to(device)
 
+        train_loss = torch.mean(torch.abs(model(train_in) - train_out))
         with torch.no_grad():
             test_loss = torch.mean(torch.abs(model(test_in) - test_out))
 
