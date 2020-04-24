@@ -80,9 +80,9 @@ func SaveScene(outDir string, obj render3d.Object, rend *render3d.RecursiveRayTr
 		images[fmt.Sprintf("input_%d.png", samples)] = renderAtRes(samples)
 	}
 
-	rend.NumSamples = 4096
+	rend.NumSamples = 16384
 	rend.MinSamples = 512
-	rend.MaxStddev = 0.02
+	rend.MaxStddev = 0.005
 	rend.OversaturatedStddevs = 3
 	target := render3d.NewImage(ImageSize, ImageSize)
 	rend.Render(target, obj)
