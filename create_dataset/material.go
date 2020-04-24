@@ -18,35 +18,40 @@ import (
 // of images, or it may be some other kind of material
 // chosen from a distribution.
 func RandomizeMaterial(m *model3d.Mesh, images []string) render3d.Object {
-	switch rand.Intn(10) {
+	n := rand.Intn(10)
+	if n == 0 {
+		m = RepairMesh(m)
+	} else {
+		m = RepairOrKeep(m)
+	}
+	c := model3d.MeshToCollider(m)
+	switch n {
 	case 0:
-		return createTransparent(m)
+		return createTransparent(c)
 	case 1:
-		return createMirror(m)
+		return createMirror(c)
 	case 2, 3, 4, 5:
-		return createColored(m)
+		return createColored(c)
 	default:
-		return createTextured(m, images)
+		return createTextured(c, images)
 	}
 }
 
 // RandomizeWallMaterial is like RandomizeMaterial, but
 // with a restricted class of materials for boundaries of
 // the scene.
-func RandomizeWallMaterial(m *model3d.Mesh, images []string) render3d.Object {
+func RandomizeWallMaterial(c model3d.Collider, images []string) render3d.Object {
 	switch rand.Intn(10) {
 	case 0:
-		return createMirror(m)
+		return createMirror(c)
 	case 1, 2, 3, 4, 5:
-		return createColored(m)
+		return createColored(c)
 	default:
-		return createTextured(m, images)
+		return createTextured(c, images)
 	}
 }
 
-func createTransparent(m *model3d.Mesh) render3d.Object {
-	m = RepairMesh(m)
-
+func createTransparent(c model3d.Collider) render3d.Object {
 	reflectFraction := math.Pow(rand.Float64(), 5)
 
 	var refractColor render3d.Color
@@ -61,7 +66,7 @@ func createTransparent(m *model3d.Mesh) render3d.Object {
 	refractIndex := rand.Float64() + 1
 
 	return &render3d.ColliderObject{
-		Collider: model3d.MeshToCollider(m),
+		Collider: c,
 		Material: &render3d.JoinedMaterial{
 			Materials: []render3d.Material{
 				&render3d.RefractMaterial{
@@ -78,12 +83,10 @@ func createTransparent(m *model3d.Mesh) render3d.Object {
 	}
 }
 
-func createMirror(m *model3d.Mesh) render3d.Object {
-	m = RepairOrKeep(m)
-
+func createMirror(c model3d.Collider) render3d.Object {
 	return &FixNormalsObject{
 		Object: &render3d.ColliderObject{
-			Collider: model3d.MeshToCollider(m),
+			Collider: c,
 			Material: &render3d.PhongMaterial{
 				Alpha:         200.0,
 				SpecularColor: render3d.NewColor(0.95 + rand.Float64()*0.05),
@@ -92,9 +95,7 @@ func createMirror(m *model3d.Mesh) render3d.Object {
 	}
 }
 
-func createColored(m *model3d.Mesh) render3d.Object {
-	m = RepairOrKeep(m)
-
+func createColored(c model3d.Collider) render3d.Object {
 	color := render3d.NewColorRGB(rand.Float64(), rand.Float64(), rand.Float64())
 	diffuse := rand.Float64()
 
@@ -113,15 +114,13 @@ func createColored(m *model3d.Mesh) render3d.Object {
 
 	return &FixNormalsObject{
 		Object: &render3d.ColliderObject{
-			Collider: model3d.MeshToCollider(m),
+			Collider: c,
 			Material: mat,
 		},
 	}
 }
 
-func createTextured(m *model3d.Mesh, images []string) render3d.Object {
-	m = RepairOrKeep(m)
-
+func createTextured(c model3d.Collider, images []string) render3d.Object {
 	path := images[rand.Intn(len(images))]
 	r, err := os.Open(path)
 	essentials.Must(err)
@@ -130,7 +129,7 @@ func createTextured(m *model3d.Mesh, images []string) render3d.Object {
 	essentials.Must(err)
 	return NewTexturedObject(&FixNormalsObject{
 		Object: &render3d.ColliderObject{
-			Collider: model3d.MeshToCollider(m),
+			Collider: c,
 		},
 	}, img)
 }

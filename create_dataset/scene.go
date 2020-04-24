@@ -103,9 +103,9 @@ type SceneLayout interface {
 	// makes sense in this kind of scene.
 	CreateLight() (render3d.Object, render3d.FocusPoint)
 
-	// CreateBackdrop creates meshes which act as walls of
+	// CreateBackdrop creates models which act as walls of
 	// the scene.
-	CreateBackdrop() []*model3d.Mesh
+	CreateBackdrop() []model3d.Collider
 
 	// PlaceMesh translates and scales the mesh so that it
 	// fits within the scene.
@@ -170,12 +170,12 @@ func (r RoomLayout) CreateLight() (render3d.Object, render3d.FocusPoint) {
 		}
 }
 
-func (r RoomLayout) CreateBackdrop() []*model3d.Mesh {
+func (r RoomLayout) CreateBackdrop() []model3d.Collider {
 	min := model3d.Coord3D{X: -r.Width / 2, Y: -r.Depth / 2}
 	max := model3d.Coord3D{X: r.Width / 2, Y: r.Depth / 2, Z: 1}
 	mesh := model3d.NewMeshRect(min, max)
 
-	var walls []*model3d.Mesh
+	var walls []model3d.Collider
 	mesh.Iterate(func(t *model3d.Triangle) {
 		var neighbor *model3d.Triangle
 		for _, n := range mesh.Neighbors(t) {
@@ -186,7 +186,7 @@ func (r RoomLayout) CreateBackdrop() []*model3d.Mesh {
 		}
 		mesh.Remove(neighbor)
 		mesh.Remove(t)
-		walls = append(walls, model3d.NewMeshTriangles([]*model3d.Triangle{t, neighbor}))
+		walls = append(walls, model3d.NewJoinedCollider([]model3d.Collider{t, neighbor}))
 	})
 
 	return walls
@@ -253,7 +253,7 @@ func (w WorldLayout) CreateLight() (render3d.Object, render3d.FocusPoint) {
 		}
 }
 
-func (w WorldLayout) CreateBackdrop() []*model3d.Mesh {
+func (w WorldLayout) CreateBackdrop() []model3d.Collider {
 	r := 100.0
 	p1 := model3d.Coord3D{X: -r, Y: -r}
 	p2 := model3d.Coord3D{X: -r, Y: r}
@@ -264,34 +264,9 @@ func (w WorldLayout) CreateBackdrop() []*model3d.Mesh {
 	floor.Add(&model3d.Triangle{p1, p2, p3})
 	floor.Add(&model3d.Triangle{p1, p3, p4})
 
-	dome := model3d.NewMeshPolar(func(g model3d.GeoCoord) float64 {
-		return r
-	}, 100)
+	dome := &model3d.Sphere{Radius: r}
 
-	// Add more resolution where you can see it.
-	for i := 0; i < 2; i++ {
-		subdiv := model3d.NewSubdivider()
-		subdiv.AddFiltered(dome, func(p1, p2 model3d.Coord3D) bool {
-			for _, p := range []model3d.Coord3D{p1, p2} {
-				if p.Y > r*0.9 {
-					return true
-				}
-			}
-			return false
-		})
-		subdiv.Subdivide(dome, func(p1, p2 model3d.Coord3D) model3d.Coord3D {
-			mp := p1.Mid(p2)
-			return mp.Normalize().Scale(r)
-		})
-	}
-
-	dome.Iterate(func(t *model3d.Triangle) {
-		if t.Max().Z < 0 {
-			dome.Remove(t)
-		}
-	})
-
-	return []*model3d.Mesh{floor, dome}
+	return []model3d.Collider{model3d.MeshToCollider(floor), dome}
 }
 
 func (w WorldLayout) PlaceMesh(m *model3d.Mesh) *model3d.Mesh {
