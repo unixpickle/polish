@@ -3,6 +3,7 @@ Machine learning models for denoising.
 """
 
 from abc import abstractmethod, abstractproperty
+import math
 
 import torch
 import torch.nn as nn
@@ -44,6 +45,7 @@ class Denoiser(nn.Module):
 
     def noisy_errors(self, images, targets):
         errors = torch.mean(torch.abs(images - targets), dim=(1, 2, 3))
+        errors = errors.detach()
         return errors + torch.randn_like(errors) * 0.05
 
     @abstractproperty
@@ -121,9 +123,21 @@ class DeepDenoiser(Denoiser):
         x = F.relu(x)
         x = self.conv2(x)
         x = F.relu(x)
+
+        x = x + embed_errors(errors, x.shape[1])
         x = self.conv3(x)
         x = F.relu(x)
+
         x = self.deconv1(x)
         x = F.relu(x)
         x = self.deconv2(x)
         return x
+
+
+def embed_errors(errors, dim):
+    expanded = errors[:, None].repeat(1, dim//2)
+    phases = torch.Tensor([i * math.pi * 2 for i in range(1, dim//2+1)],
+                          device=errors.device).float()
+    args = expanded * phases
+    results = torch.cat([torch.cos(args), torch.sin(args)], dim=1)
+    return results[..., None, None]
