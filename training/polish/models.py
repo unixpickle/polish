@@ -2,8 +2,9 @@
 Machine learning models for denoising.
 """
 
-from abc import abstractproperty
+from abc import abstractmethod, abstractproperty
 
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -20,6 +21,31 @@ def all_models():
 
 
 class Denoiser(nn.Module):
+    @abstractmethod
+    def forward(self, images, errors):
+        """
+        Attempt to denoise the images.
+
+        Args:
+            images: an [N x C x H x W] Tensor.
+            errors: an [N] Tensor of approximate mean L1
+                errors for each image. This may guide how
+                much the model affects each image.
+        """
+        pass
+
+    def loss(self, images, targets):
+        """
+        Compute the reconstruction loss using a noisy but
+        unbiased estimate of the target errors.
+        """
+        errors = self.noisy_errors(images, targets)
+        return torch.mean(torch.abs(self(images, errors) - targets))
+
+    def noisy_errors(self, images, targets):
+        errors = torch.mean(torch.abs(images - targets), dim=(1, 2, 3))
+        return errors + torch.randn_like(errors) * 0.05
+
     @abstractproperty
     def dim_lcd(self):
         """
@@ -45,7 +71,7 @@ class LinearDenoiser(Denoiser):
     def dim_lcd(self):
         return 1
 
-    def forward(self, x):
+    def forward(self, x, errors):
         return self.conv(x)
 
 
@@ -66,7 +92,7 @@ class ShallowDenoiser(Denoiser):
     def dim_lcd(self):
         return 1
 
-    def forward(self, x):
+    def forward(self, x, errors):
         x = self.conv1(x)
         x = F.relu(x)
         x = self.conv2(x)
@@ -90,7 +116,7 @@ class DeepDenoiser(Denoiser):
     def dim_lcd(self):
         return 4
 
-    def forward(self, x):
+    def forward(self, x, errors):
         x = self.conv1(x)
         x = F.relu(x)
         x = self.conv2(x)

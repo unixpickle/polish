@@ -35,10 +35,9 @@ def main():
         train_in, train_out = train_in.to(device), train_out.to(device)
         test_in, test_out = test_in.to(device), test_out.to(device)
 
-        train_loss = torch.mean(torch.abs(model(train_in) - train_out))
+        train_loss = model.loss(train_in, train_out)
         with torch.no_grad():
-            test_actual_out = model(test_in)
-            test_loss = torch.mean(torch.abs(test_actual_out - test_out))
+            test_loss = model.loss(test_in, test_out)
 
         opt.zero_grad()
         train_loss.backward()
@@ -46,7 +45,10 @@ def main():
 
         if not i % args.save_interval:
             torch.save(model.state_dict(), args.model_path)
-            save_rendering(test_in, test_actual_out)
+            with torch.no_grad():
+                errors = model.noisy_errors(test_in, test_out)
+                test_pred = model(test_in, errors)
+                save_rendering(test_in, test_pred)
 
         print('step %d: train=%f test=%f' % (i, train_loss.item(), test_loss.item()))
         i += 1
