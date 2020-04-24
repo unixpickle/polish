@@ -136,8 +136,8 @@ class DeepDenoiser(Denoiser):
 
 def embed_errors(errors, dim):
     expanded = errors[:, None].repeat(1, dim//2)
-    phases = torch.Tensor([i * math.pi * 2 for i in range(1, dim//2+1)],
-                          device=errors.device).float()
+    phases = torch.Tensor([i * math.pi * 2 for i in range(1, dim//2+1)])
+    phases = phases.to(errors.device).to(errors.dtype)
     args = expanded * phases
     results = torch.cat([torch.cos(args), torch.sin(args)], dim=1)
     return results[..., None, None]
