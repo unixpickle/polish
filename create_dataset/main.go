@@ -20,7 +20,7 @@ func main() {
 	var args Args
 	args.Parse()
 
-	trainModels, testModels, err := ScanModelNet(args.ModelNetPath)
+	models, err := ScanModelNet(args.ModelNetPath)
 	essentials.Must(err)
 
 	images, err := ScanImages(args.ImagesPath)
@@ -28,13 +28,9 @@ func main() {
 
 	CreateOutput(args.OutputDir)
 
-	trainDir := filepath.Join(args.OutputDir, "train")
-	testDir := filepath.Join(args.OutputDir, "test")
 	for i := 0; true; i++ {
-		obj, rend := RandomScene(trainModels, images)
-		SaveScene(NextImagePath(trainDir), obj, rend)
-		obj, rend = RandomScene(testModels, images)
-		SaveScene(NextImagePath(testDir), obj, rend)
+		obj, rend := RandomScene(models, images)
+		SaveScene(args.OutputDir, obj, rend)
 	}
 }
 
@@ -44,21 +40,14 @@ func CreateOutput(outDir string) {
 	} else {
 		essentials.Must(err)
 	}
-	for _, dir := range []string{"train", "test"} {
-		subDir := filepath.Join(outDir, dir)
-		if _, err := os.Stat(subDir); os.IsNotExist(err) {
-			essentials.Must(os.Mkdir(subDir, 0755))
-		} else {
-			essentials.Must(err)
-		}
-	}
 }
 
-func NextImagePath(dir string) string {
-	for i := 0; true; i++ {
-		outName := fmt.Sprintf("%05d.png", i)
-		newPath := filepath.Join(dir, outName)
+func CreateSceneDir(outDir string) string {
+	for i := 0; i < 10; i++ {
+		outName := fmt.Sprintf("%06x", rand.Intn(0x1000000))
+		newPath := filepath.Join(outDir, outName)
 		if _, err := os.Stat(newPath); os.IsNotExist(err) {
+			essentials.Must(os.Mkdir(newPath, 0755))
 			return newPath
 		}
 	}
@@ -66,33 +55,46 @@ func NextImagePath(dir string) string {
 	return ""
 }
 
-func SaveScene(path string, obj render3d.Object, rend *render3d.RecursiveRayTracer) {
+func SaveScene(outDir string, obj render3d.Object, rend *render3d.RecursiveRayTracer) {
 	rend.Antialias = 1.0
 	rend.MaxDepth = 10
 	rend.Cutoff = 1e-4
 
 	variance := rend.RayVariance(obj, 200, 200, 5)
-	log.Printf("Creating scene (var=%f): %s", variance, path)
+	log.Printf("Creating scene (var=%f) ...", variance)
 
-	grid := render3d.NewImage(ImageSize*2, ImageSize*5)
-
-	renderAt := func(x, y, samples int) float64 {
+	renderAtRes := func(samples int) *render3d.Image {
 		rend.NumSamples = samples
-		img := render3d.NewImage(ImageSize, ImageSize)
-		rend.Render(img, obj)
-		grid.CopyFrom(img, x, y)
-		return BrightnessScale(img)
+		img1 := render3d.NewImage(ImageSize, ImageSize)
+		img2 := render3d.NewImage(ImageSize, ImageSize)
+		rend.Render(img1, obj)
+		rend.Render(img2, obj)
+		img := render3d.NewImage(ImageSize*2, ImageSize)
+		img.CopyFrom(img1, 0, 0)
+		img.CopyFrom(img2, ImageSize, 0)
+		return img
 	}
 
-	for i, samples := range []int{1, 16, 32, 128} {
-		for j := 0; j < 2; j++ {
-			renderAt(j*ImageSize, i*ImageSize, samples)
-		}
+	images := map[string]*render3d.Image{}
+	for _, samples := range []int{1, 2, 3, 4, 5} {
+		images[fmt.Sprintf("input_%d.png", samples)] = renderAtRes(samples)
 	}
 
-	renderAt(0, ImageSize*4, 512)
-	scale := renderAt(ImageSize, ImageSize*4, 2048)
+	rend.NumSamples = 10000
+	rend.MinSamples = 2
+	rend.MaxStddev = 1000
+	rend.OversaturatedStddevs = 3
+	target := render3d.NewImage(ImageSize, ImageSize)
+	rend.Render(target, obj)
+	images["target.png"] = target
 
-	grid.Scale(scale)
-	grid.Save(path)
+	// Save all the outputs once we have created them
+	// to avoid creating empty folders in the dataset
+	// for a long period of time.
+	sampleDir := CreateSceneDir(outDir)
+	scale := BrightnessScale(target)
+	for name, img := range images {
+		img.Scale(scale)
+		img.Save(filepath.Join(sampleDir, name))
+	}
 }
