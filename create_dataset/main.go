@@ -80,9 +80,11 @@ func SaveScene(outDir string, obj render3d.Object, rend *render3d.RecursiveRayTr
 		images[fmt.Sprintf("input_%d.png", samples)] = renderAtRes(samples)
 	}
 
+	scale := BrightnessScale(images["input_512.png"])
+
 	rend.NumSamples = 16384
 	rend.MinSamples = 512
-	rend.MaxStddev = 0.005
+	rend.MaxStddev = 0.01 / scale
 	rend.OversaturatedStddevs = 3
 	target := render3d.NewImage(ImageSize, ImageSize)
 	rend.Render(target, obj)
@@ -92,7 +94,6 @@ func SaveScene(outDir string, obj render3d.Object, rend *render3d.RecursiveRayTr
 	// to avoid creating empty folders in the dataset
 	// for a long period of time.
 	sampleDir := CreateSceneDir(outDir)
-	scale := BrightnessScale(target)
 	for name, img := range images {
 		img.Scale(scale)
 		img.Save(filepath.Join(sampleDir, name))
