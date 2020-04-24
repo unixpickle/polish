@@ -111,6 +111,7 @@ class DeepDenoiser(Denoiser):
         self.conv1 = nn.Conv2d(3, 32, 5, padding=2, stride=2)
         self.conv2 = nn.Conv2d(32, 64, 5, padding=2, stride=2)
 
+        self.cond_conv = nn.Conv2d(128, 64, 1)
         self.residuals = nn.ModuleList([nn.Sequential(
             nn.GroupNorm(4, 64),
             nn.ReLU(),
@@ -132,7 +133,10 @@ class DeepDenoiser(Denoiser):
         x = F.relu(x)
         x = self.conv2(x)
 
-        x = x + embed_errors(errors, x.shape[1])
+        embeds = embed_errors(errors, x.shape[1]) + torch.zeros_like(x)
+        x = torch.cat([x, embeds], dim=1)
+        x = self.cond_conv(x)
+
         for r in self.residuals:
             x = x + r(x)
 
