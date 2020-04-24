@@ -8,7 +8,7 @@ import torch.utils.data as data
 
 
 class PolishDataset(data.IterableDataset):
-    def __init__(self, data_dir, split='train', crop_size=192, cache=True):
+    def __init__(self, data_dir, split='train', crop_size=192, cache=False):
         self.cache = cache
         self.crop_size = crop_size
         self.listing = [os.path.join(data_dir, split, x)
