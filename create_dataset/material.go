@@ -157,8 +157,9 @@ func NewTexturedObject(obj render3d.Object, texture image.Image) *TexturedObject
 	yBasis := model3d.NewCoord3DRandUnit().ProjectOut(xBasis).Normalize()
 
 	bounds := texture.Bounds()
-	xBasis = xBasis.Scale(float64(bounds.Dx()) / maxDim * (rand.Float64() + 0.5))
-	yBasis = yBasis.Scale(float64(bounds.Dy()) / maxDim * (rand.Float64() + 0.5))
+	scale := math.Exp(rand.Float64()*5) * 0.5
+	xBasis = xBasis.Scale(scale * float64(bounds.Dx()) / maxDim)
+	yBasis = yBasis.Scale(scale * float64(bounds.Dy()) / maxDim)
 
 	diffuse := rand.Float64()
 	specular := rand.Float64() * (1 - diffuse)
