@@ -63,6 +63,8 @@ func SaveScene(outDir string, obj render3d.Object, rend *render3d.RecursiveRayTr
 	variance := rend.RayVariance(obj, 200, 200, 5)
 	log.Printf("Creating scene (var=%f) ...", variance)
 
+	incidence := CreateIncidenceMap(rend, obj)
+
 	renderAtRes := func(samples int) *render3d.Image {
 		rend.NumSamples = samples
 		img1 := render3d.NewImage(ImageSize, ImageSize)
@@ -98,4 +100,5 @@ func SaveScene(outDir string, obj render3d.Object, rend *render3d.RecursiveRayTr
 		img.Scale(scale)
 		img.Save(filepath.Join(sampleDir, name))
 	}
+	SaveIncidenceMap(filepath.Join(sampleDir, "incidence.png"), incidence)
 }
