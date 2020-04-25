@@ -108,20 +108,20 @@ class DeepDenoiser(Denoiser):
 
     def __init__(self):
         super().__init__()
-        self.conv1 = nn.Conv2d(3, 32, 5, padding=2, stride=2)
-        self.conv2 = nn.Conv2d(32, 64, 5, padding=2, stride=2)
+        self.conv1 = nn.Conv2d(3, 64, 5, padding=2, stride=2)
+        self.conv2 = nn.Conv2d(64, 128, 5, padding=2, stride=2)
 
-        self.cond_conv = nn.Conv2d(128, 64, 1)
+        self.cond_conv = nn.Conv2d(256, 128, 1)
         self.residuals = nn.ModuleList([nn.Sequential(
-            nn.GroupNorm(4, 64),
+            nn.GroupNorm(8, 128),
             nn.ReLU(),
-            nn.Conv2d(64, 64, 3, padding=1),
+            nn.Conv2d(128, 256, 3, padding=1),
             nn.ReLU(),
-            nn.Conv2d(64, 64, 3, padding=1),
-        ) for _ in range(2)])
+            nn.Conv2d(256, 128, 3, padding=1),
+        ) for _ in range(3)])
 
-        self.deconv1 = nn.ConvTranspose2d(64, 32, 4, padding=1, stride=2)
-        self.deconv2 = nn.ConvTranspose2d(32, 32, 4, padding=1, stride=2)
+        self.deconv1 = nn.ConvTranspose2d(128, 64, 4, padding=1, stride=2)
+        self.deconv2 = nn.ConvTranspose2d(64, 32, 4, padding=1, stride=2)
         self.conv3 = nn.Conv2d(32, 3, 3, padding=1)
 
     @property
