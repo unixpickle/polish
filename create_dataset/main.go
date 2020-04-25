@@ -85,8 +85,8 @@ func SaveScene(outDir string, obj render3d.Object, rend *render3d.RecursiveRayTr
 	scale := BrightnessScale(images["input_512.png"])
 
 	rend.NumSamples = 16384
-	rend.MinSamples = 512
-	rend.MaxStddev = 0.01 / scale
+	rend.MinSamples = 2048
+	rend.MaxStddev = 0.005 / scale
 	rend.OversaturatedStddevs = 3
 	target := render3d.NewImage(ImageSize, ImageSize)
 	rend.Render(target, obj)
