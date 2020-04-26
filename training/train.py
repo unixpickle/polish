@@ -46,8 +46,7 @@ def main():
         if not i % args.save_interval:
             torch.save(model.state_dict(), args.model_path)
             with torch.no_grad():
-                errors = model.noisy_errors(test_in, test_out)
-                test_pred = model(test_in, errors)
+                test_pred = model(test_in)
                 save_rendering(test_in, test_pred)
 
         print('step %d: train=%f test=%f' % (i, train_loss.item(), test_loss.item()))
