@@ -55,8 +55,8 @@ def main():
 
 def create_datasets(data_dir, batch):
     kwargs = {'num_workers': 8, 'pin_memory': True, 'batch_size': batch}
-    train_loader = torch.utils.data.DataLoader(PolishDataset(data_dir, split='train'), **kwargs)
-    test_loader = torch.utils.data.DataLoader(PolishDataset(data_dir, split='test'), **kwargs)
+    train_loader = torch.utils.data.DataLoader(PolishDataset(data_dir), **kwargs)
+    test_loader = torch.utils.data.DataLoader(PolishDataset(data_dir, train=False), **kwargs)
     return train_loader, test_loader
 
 
