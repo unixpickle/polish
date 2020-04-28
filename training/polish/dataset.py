@@ -32,8 +32,8 @@ class PolishDataset(data.IterableDataset):
 
     def get_sample(self, path):
         input_case = random.choice(self.samples)
-        inputs = np.array(Image.open(os.path.join(path, 'target.png')))
-        outputs = np.array(Image.open(os.path.join(path, 'input_%d.png' % input_case)))
+        outputs = np.array(Image.open(os.path.join(path, 'target.png')))
+        inputs = np.array(Image.open(os.path.join(path, 'input_%d.png' % input_case)))
         aug = Augmentation(inputs.shape[0], self.crop_size)
         return aug(inputs), aug(outputs)
 
