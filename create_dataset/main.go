@@ -90,10 +90,19 @@ func SaveScene(outDir string, obj render3d.Object, rend *render3d.RecursiveRayTr
 	bidir.MaxLightDepth = 4
 	bidir.Cutoff = 1e-4
 	bidir.NumSamples = 16384
-	bidir.MinSamples = 2048
+	bidir.MinSamples = 1024
 	bidir.MaxStddev = 0.005 / scale
 	bidir.OversaturatedStddevs = 3
 	bidir.RouletteDelta = 0.1 / scale
+
+	var lastFrac float64
+	bidir.LogFunc = func(frac, samples float64) {
+		if frac-lastFrac > 0.1 {
+			lastFrac = frac
+			log.Printf("Progress %.1f (samples %d)", frac, int(samples))
+		}
+	}
+
 	target := render3d.NewImage(ImageSize, ImageSize)
 	bidir.Render(target, obj)
 	images["target.png"] = target
