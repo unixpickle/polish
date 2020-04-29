@@ -17,7 +17,7 @@ def main():
 
     args = arg_parser().parse_args()
 
-    models = all_models()
+    models = all_models(incident=args.incident)
     if args.model_type not in models:
         raise ValueError('unknown model: ' + args.model_type)
     model = models[args.model_type]
@@ -25,7 +25,7 @@ def main():
         model.load_state_dict(torch.load(args.model_path, map_location='cpu'))
     model.to(device)
 
-    trains, tests = create_datasets(args.data, args.batch)
+    trains, tests = create_datasets(args.data, args.batch, incident=args.incident)
     print('baseline: train %f, test %f' % (identity_baseline(trains), identity_baseline(tests)))
 
     opt = optim.Adam(model.parameters(), lr=args.lr)
@@ -53,15 +53,16 @@ def main():
         i += 1
 
 
-def create_datasets(data_dir, batch):
-    kwargs = {'num_workers': 8, 'pin_memory': True, 'batch_size': batch}
-    train_loader = torch.utils.data.DataLoader(PolishDataset(data_dir), **kwargs)
-    test_loader = torch.utils.data.DataLoader(PolishDataset(data_dir, train=False), **kwargs)
+def create_datasets(data_dir, batch, **kwargs):
+    dl_kwargs = {'num_workers': 8, 'pin_memory': True, 'batch_size': batch}
+    train_loader = torch.utils.data.DataLoader(PolishDataset(data_dir, **kwargs), **dl_kwargs)
+    test_loader = torch.utils.data.DataLoader(PolishDataset(data_dir, train=False, **kwargs),
+                                              **dl_kwargs)
     return train_loader, test_loader
 
 
 def save_rendering(inputs, outputs):
-    joined = torch.cat([inputs, outputs], dim=-1).permute(0, 2, 3, 1).contiguous()
+    joined = torch.cat([inputs[:, :3], outputs], dim=-1).permute(0, 2, 3, 1).contiguous()
     joined = joined.view(-1, *joined.shape[2:])
     arr = joined.detach().cpu().numpy()
     arr = np.clip(arr, 0, 1)
@@ -72,6 +73,7 @@ def save_rendering(inputs, outputs):
 def arg_parser():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--data', default='../data')
+    parser.add_argument('--incident', action='store_true')
     parser.add_argument('--model-path', default='model.pt')
     parser.add_argument('--model-type', default='shallow')
     parser.add_argument('--save-interval', default=10, type=int)

@@ -9,14 +9,14 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-def all_models():
+def all_models(**kwargs):
     """
     Get a dict of supported models.
     """
     return {
-        'linear': LinearDenoiser(),
-        'shallow': ShallowDenoiser(),
-        'deep': DeepDenoiser(),
+        'linear': LinearDenoiser(**kwargs),
+        'shallow': ShallowDenoiser(**kwargs),
+        'deep': DeepDenoiser(**kwargs),
     }
 
 
@@ -43,11 +43,11 @@ class LinearDenoiser(Denoiser):
     one convolutional filter.
     """
 
-    def __init__(self, kernel_size=7):
+    def __init__(self, incident=False, kernel_size=7):
         super().__init__()
         if not kernel_size % 2:
             raise ValueError('kernel_size must be odd')
-        self.conv = nn.Conv2d(3, 3, kernel_size, padding=kernel_size//2)
+        self.conv = nn.Conv2d(4 if incident else 3, 3, kernel_size, padding=kernel_size//2)
 
     @property
     def dim_lcd(self):
@@ -63,11 +63,12 @@ class ShallowDenoiser(Denoiser):
     require any spatial LCD.
     """
 
-    def __init__(self, kernel_size=5, hidden_size=32):
+    def __init__(self, incident=False, kernel_size=5, hidden_size=32):
         super().__init__()
         if not kernel_size % 2:
             raise ValueError('kernel_size must be odd')
-        self.conv1 = nn.Conv2d(3, hidden_size, kernel_size, padding=kernel_size//2)
+        self.conv1 = nn.Conv2d(4 if incident else 3, hidden_size, kernel_size,
+                               padding=kernel_size//2)
         self.conv2 = nn.Conv2d(hidden_size, 3, kernel_size, padding=kernel_size//2)
 
     @property
@@ -86,9 +87,9 @@ class DeepDenoiser(Denoiser):
     A denoiser that has multiple hidden layers.
     """
 
-    def __init__(self):
+    def __init__(self, incident=False):
         super().__init__()
-        self.conv1 = nn.Conv2d(3, 64, 5, padding=2, stride=2)
+        self.conv1 = nn.Conv2d(4 if incident else 3, 64, 5, padding=2, stride=2)
         self.conv2 = nn.Conv2d(64, 128, 5, padding=2, stride=2)
 
         self.residuals = nn.ModuleList([nn.Sequential(
