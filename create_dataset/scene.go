@@ -12,12 +12,14 @@ import (
 
 // RandomScene creates a random collection of objects and
 // fills out a renderer to render them.
-func RandomScene(models, images []string) (render3d.Object, *render3d.RecursiveRayTracer) {
+func RandomScene(models, images []string) (render3d.Object, *render3d.RecursiveRayTracer,
+	*render3d.BidirPathTracer) {
 	layout := RandomSceneLayout()
 	numObjects := rand.Intn(10) + 1
 	numLights := rand.Intn(10) + 1
 
 	var objects render3d.JoinedObject
+	var lights []render3d.AreaLight
 	var focusPoints []render3d.FocusPoint
 	var focusProbs []float64
 
@@ -41,17 +43,22 @@ func RandomScene(models, images []string) (render3d.Object, *render3d.RecursiveR
 	for i := 0; i < numLights; i++ {
 		light, focusPoint := layout.CreateLight()
 		objects = append(objects, light)
+		lights = append(lights, light)
 		focusPoints = append(focusPoints, focusPoint)
 		focusProbs = append(focusProbs, 0.3/float64(numLights))
 	}
 
 	origin, target := layout.CameraInfo()
 	fov := (rand.Float64()*0.5 + 0.5) * math.Pi / 3.0
+	camera := render3d.NewCameraAt(origin, target, fov)
 	return objects, &render3d.RecursiveRayTracer{
-		Camera:          render3d.NewCameraAt(origin, target, fov),
-		FocusPoints:     focusPoints,
-		FocusPointProbs: focusProbs,
-	}
+			Camera:          camera,
+			FocusPoints:     focusPoints,
+			FocusPointProbs: focusProbs,
+		}, &render3d.BidirPathTracer{
+			Camera: camera,
+			Light:  render3d.JoinAreaLights(lights...),
+		}
 }
 
 func randomRotation(m *model3d.Mesh) *model3d.Mesh {
@@ -101,7 +108,7 @@ type SceneLayout interface {
 
 	// CreateLight creates a randomized light object that
 	// makes sense in this kind of scene.
-	CreateLight() (render3d.Object, render3d.FocusPoint)
+	CreateLight() (render3d.AreaLight, render3d.FocusPoint)
 
 	// CreateBackdrop creates models which act as walls of
 	// the scene.
@@ -123,7 +130,7 @@ func (r RoomLayout) CameraInfo() (position, target model3d.Coord3D) {
 	return model3d.Coord3D{Z: 0.5, Y: -r.Depth/2 + 1e-5}, model3d.Coord3D{Z: 0.5, Y: r.Depth / 2}
 }
 
-func (r RoomLayout) CreateLight() (render3d.Object, render3d.FocusPoint) {
+func (r RoomLayout) CreateLight() (render3d.AreaLight, render3d.FocusPoint) {
 	var center model3d.Coord3D
 	if rand.Intn(2) == 0 {
 		// Place light on ceiling.
@@ -145,29 +152,31 @@ func (r RoomLayout) CreateLight() (render3d.Object, render3d.FocusPoint) {
 		}
 	}
 
-	var shape model3d.Collider
+	var light render3d.AreaLight
 	var focusRadius float64
+	color := render3d.NewColor((rand.Float64() + 0.1) * 20)
 	if rand.Intn(2) == 0 {
 		focusRadius = rand.Float64()*0.2 + 0.05
-		shape = &model3d.Sphere{Center: center, Radius: focusRadius}
+		light = render3d.NewSphereAreaLight(
+			&model3d.Sphere{Center: center, Radius: focusRadius},
+			color,
+		)
 	} else {
 		size := uniformRandom().Scale(0.1).Add(model3d.Coord3D{X: 0.05, Y: 0.05, Z: 0.05})
-		shape = &model3d.Rect{
-			MinVal: center.Sub(size),
-			MaxVal: center.Add(size),
-		}
+		light = render3d.NewMeshAreaLight(
+			model3d.NewMeshRect(
+				center.Sub(size),
+				center.Add(size),
+			),
+			color,
+		)
 		focusRadius = size.Norm()
 	}
 
-	return &render3d.ColliderObject{
-			Collider: shape,
-			Material: &render3d.LambertMaterial{
-				EmissionColor: render3d.NewColor((rand.Float64() + 0.1) * 20),
-			},
-		}, &render3d.SphereFocusPoint{
-			Center: shape.Min().Mid(shape.Max()),
-			Radius: focusRadius,
-		}
+	return light, &render3d.SphereFocusPoint{
+		Center: light.Min().Mid(light.Max()),
+		Radius: focusRadius,
+	}
 }
 
 func (r RoomLayout) CreateBackdrop() []model3d.Collider {
@@ -229,7 +238,7 @@ func (w WorldLayout) CameraInfo() (position, target model3d.Coord3D) {
 	return model3d.Coord3D{Y: -20, Z: 5}, model3d.Coord3D{Y: 0, Z: 5}
 }
 
-func (w WorldLayout) CreateLight() (render3d.Object, render3d.FocusPoint) {
+func (w WorldLayout) CreateLight() (render3d.AreaLight, render3d.FocusPoint) {
 	center := model3d.NewCoord3DRandUnit().Scale(70)
 	if center.Z < 0 {
 		center.Z = -center.Z
@@ -242,12 +251,9 @@ func (w WorldLayout) CreateLight() (render3d.Object, render3d.FocusPoint) {
 	}
 	shape := &model3d.Sphere{Center: center, Radius: rand.Float64()*5.0 + 2.0}
 	r2 := shape.Radius * shape.Radius
-	return &render3d.ColliderObject{
-			Collider: shape,
-			Material: &render3d.LambertMaterial{
-				EmissionColor: render3d.NewColor((rand.Float64() + 0.5) * 200 / r2),
-			},
-		}, &render3d.SphereFocusPoint{
+	emission := render3d.NewColor((rand.Float64() + 0.5) * 200 / r2)
+	return render3d.NewSphereAreaLight(shape, emission),
+		&render3d.SphereFocusPoint{
 			Center: shape.Center,
 			Radius: shape.Radius,
 		}

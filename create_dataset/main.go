@@ -29,8 +29,8 @@ func main() {
 	CreateOutput(args.OutputDir)
 
 	for i := 0; true; i++ {
-		obj, rend := RandomScene(models, images)
-		SaveScene(args.OutputDir, obj, rend)
+		obj, rend, bidir := RandomScene(models, images)
+		SaveScene(args.OutputDir, obj, rend, bidir)
 	}
 }
 
@@ -55,7 +55,8 @@ func CreateSceneDir(outDir string) string {
 	return ""
 }
 
-func SaveScene(outDir string, obj render3d.Object, rend *render3d.RecursiveRayTracer) {
+func SaveScene(outDir string, obj render3d.Object, rend *render3d.RecursiveRayTracer,
+	bidir *render3d.BidirPathTracer) {
 	rend.Antialias = 1.0
 	rend.MaxDepth = 10
 	rend.Cutoff = 1e-4
@@ -84,12 +85,17 @@ func SaveScene(outDir string, obj render3d.Object, rend *render3d.RecursiveRayTr
 
 	scale := BrightnessScale(images["input_512.png"])
 
-	rend.NumSamples = 16384
-	rend.MinSamples = 2048
-	rend.MaxStddev = 0.005 / scale
-	rend.OversaturatedStddevs = 3
+	bidir.Antialias = 1.0
+	bidir.MaxDepth = 10
+	bidir.MaxLightDepth = 4
+	bidir.Cutoff = 1e-4
+	bidir.NumSamples = 16384
+	bidir.MinSamples = 2048
+	bidir.MaxStddev = 0.005 / scale
+	bidir.OversaturatedStddevs = 3
+	bidir.RouletteDelta = 0.1 / scale
 	target := render3d.NewImage(ImageSize, ImageSize)
-	rend.Render(target, obj)
+	bidir.Render(target, obj)
 	images["target.png"] = target
 
 	// Save all the outputs once we have created them
