@@ -11,47 +11,53 @@ import (
 	"github.com/unixpickle/model3d/render3d"
 )
 
-// RandomizeMaterial adds a random material to the mesh to
-// turn it into an object.
+// ModelMaterial defines the material of an object.
+type ModelMaterial interface {
+	FixNormal(ray *model3d.Ray, normal model3d.Coord3D) model3d.Coord3D
+	Material(coord model3d.Coord3D) render3d.Material
+}
+
+// RandomizeMaterial generates a random material for the
+// mesh and returns a new mesh to use in the old mesh's
+// place (which may be necessary for refracted objects).
 //
 // The material may be based on a random image from a list
 // of images, or it may be some other kind of material
 // chosen from a distribution.
-func RandomizeMaterial(m *model3d.Mesh, images []string) render3d.Object {
+func RandomizeMaterial(m *model3d.Mesh, images []string) (*model3d.Mesh, ModelMaterial) {
 	n := rand.Intn(10)
 	if n == 0 {
 		m = RepairMesh(m)
 	} else {
 		m = RepairOrKeep(m)
 	}
-	c := model3d.MeshToCollider(m)
 	switch n {
 	case 0:
-		return createTransparent(c)
+		return m, createTransparent()
 	case 1:
-		return createMirror(c)
+		return m, createMirror()
 	case 2, 3, 4, 5:
-		return createColored(c)
+		return m, createColored()
 	default:
-		return createTextured(c, images)
+		return m, createTextured(m, images)
 	}
 }
 
 // RandomizeWallMaterial is like RandomizeMaterial, but
 // with a restricted class of materials for boundaries of
 // the scene.
-func RandomizeWallMaterial(c model3d.Collider, images []string) render3d.Object {
+func RandomizeWallMaterial(c model3d.Collider, images []string) ModelMaterial {
 	switch rand.Intn(10) {
 	case 0:
-		return createMirror(c)
+		return createMirror()
 	case 1, 2, 3, 4, 5:
-		return createColored(c)
+		return createColored()
 	default:
 		return createTextured(c, images)
 	}
 }
 
-func createTransparent(c model3d.Collider) render3d.Object {
+func createTransparent() ModelMaterial {
 	reflectFraction := math.Pow(rand.Float64(), 5)
 
 	var refractColor render3d.Color
@@ -65,9 +71,8 @@ func createTransparent(c model3d.Collider) render3d.Object {
 
 	refractIndex := rand.Float64() + 1
 
-	return &render3d.ColliderObject{
-		Collider: c,
-		Material: &render3d.JoinedMaterial{
+	return StaticModelMaterial{
+		Mat: &render3d.JoinedMaterial{
 			Materials: []render3d.Material{
 				&render3d.RefractMaterial{
 					IndexOfRefraction: refractIndex,
@@ -83,19 +88,17 @@ func createTransparent(c model3d.Collider) render3d.Object {
 	}
 }
 
-func createMirror(c model3d.Collider) render3d.Object {
-	return &FixNormalsObject{
-		Object: &render3d.ColliderObject{
-			Collider: c,
-			Material: &render3d.PhongMaterial{
-				Alpha:         200.0,
-				SpecularColor: render3d.NewColor(0.95 + rand.Float64()*0.05),
-			},
+func createMirror() ModelMaterial {
+	return StaticModelMaterial{
+		ShouldFixNormal: true,
+		Mat: &render3d.PhongMaterial{
+			Alpha:         200.0,
+			SpecularColor: render3d.NewColor(0.95 + rand.Float64()*0.05),
 		},
 	}
 }
 
-func createColored(c model3d.Collider) render3d.Object {
+func createColored() ModelMaterial {
 	color := render3d.NewColorRGB(rand.Float64(), rand.Float64(), rand.Float64())
 	diffuse := rand.Float64()
 
@@ -112,33 +115,44 @@ func createColored(c model3d.Collider) render3d.Object {
 		}
 	}
 
-	return &FixNormalsObject{
-		Object: &render3d.ColliderObject{
-			Collider: c,
-			Material: mat,
-		},
+	return StaticModelMaterial{
+		ShouldFixNormal: true,
+		Mat:             mat,
 	}
 }
 
-func createTextured(c model3d.Collider, images []string) render3d.Object {
+func createTextured(obj model3d.Bounder, images []string) ModelMaterial {
 	path := images[rand.Intn(len(images))]
 	r, err := os.Open(path)
 	essentials.Must(err)
 	defer r.Close()
 	img, _, err := image.Decode(r)
 	essentials.Must(err)
-	return NewTexturedObject(&FixNormalsObject{
-		Object: &render3d.ColliderObject{
-			Collider: c,
-		},
-	}, img)
+	return NewTexturedModelMaterial(obj, img)
 }
 
-// A TexturedObject is an object with an image projected
-// orthographically on top of it.
-type TexturedObject struct {
-	render3d.Object
+// StaticModelMaterial is a ModelMaterial with a constant
+// value.
+type StaticModelMaterial struct {
+	ShouldFixNormal bool
 
+	Mat render3d.Material
+}
+
+func (s StaticModelMaterial) FixNormal(r *model3d.Ray, normal model3d.Coord3D) model3d.Coord3D {
+	if s.ShouldFixNormal && r.Direction.Dot(normal) > 0 {
+		return normal.Scale(-1)
+	}
+	return normal
+}
+
+func (s StaticModelMaterial) Material(coord model3d.Coord3D) render3d.Material {
+	return s.Mat
+}
+
+// A TexturedModelMaterial is a ModelMaterial that applies
+// the orthographic projection of an image to the model.
+type TexturedModelMaterial struct {
 	Alpha    float64
 	Specular float64
 	Diffuse  float64
@@ -147,9 +161,9 @@ type TexturedObject struct {
 	YBasis   model3d.Coord3D
 }
 
-// NewTexturedObject creates an object with a texture
-// randomly slapped on along some axis.
-func NewTexturedObject(obj render3d.Object, texture image.Image) *TexturedObject {
+// NewTexturedModelMaterial creates an object with a
+// texture randomly slapped on along some axis.
+func NewTexturedModelMaterial(obj model3d.Bounder, texture image.Image) *TexturedModelMaterial {
 	size := obj.Max().Sub(obj.Min())
 	maxDim := math.Max(math.Max(size.X, size.Y), size.Z)
 
@@ -164,9 +178,7 @@ func NewTexturedObject(obj render3d.Object, texture image.Image) *TexturedObject
 	diffuse := rand.Float64()
 	specular := rand.Float64() * (1 - diffuse)
 
-	return &TexturedObject{
-		Object: obj,
-
+	return &TexturedModelMaterial{
 		Alpha:    math.Exp(rand.Float64()*5 - 1),
 		Specular: specular,
 		Diffuse:  diffuse,
@@ -176,14 +188,14 @@ func NewTexturedObject(obj render3d.Object, texture image.Image) *TexturedObject
 	}
 }
 
-func (t *TexturedObject) Cast(ray *model3d.Ray) (model3d.RayCollision, render3d.Material, bool) {
-	rc, mat, ok := t.Object.Cast(ray)
-	if !ok {
-		return rc, mat, ok
+func (t *TexturedModelMaterial) FixNormal(r *model3d.Ray, normal model3d.Coord3D) model3d.Coord3D {
+	if r.Direction.Dot(normal) > 0 {
+		return normal.Scale(-1)
 	}
+	return normal
+}
 
-	p := ray.Origin.Add(ray.Direction.Scale(rc.Scale))
-
+func (t *TexturedModelMaterial) Material(p model3d.Coord3D) render3d.Material {
 	x := int(t.XBasis.Dot(p))
 	y := int(t.YBasis.Dot(p))
 
@@ -208,25 +220,9 @@ func (t *TexturedObject) Cast(ray *model3d.Ray) (model3d.RayCollision, render3d.
 	color := render3d.NewColorRGB(float64(r)/0xffff, float64(g)/0xffff,
 		float64(b)/0xffff)
 
-	return rc, &render3d.PhongMaterial{
+	return &render3d.PhongMaterial{
 		Alpha:         t.Alpha,
 		SpecularColor: render3d.NewColor(t.Specular),
 		DiffuseColor:  color.Scale(t.Diffuse),
-	}, ok
-}
-
-// A FixNormalsObject wraps an object and makes sure the
-// normals always face outward.
-type FixNormalsObject struct {
-	render3d.Object
-}
-
-func (f *FixNormalsObject) Cast(r *model3d.Ray) (model3d.RayCollision, render3d.Material, bool) {
-	rc, mat, ok := f.Object.Cast(r)
-	if ok {
-		if rc.Normal.Dot(r.Direction) > 0 {
-			rc.Normal = rc.Normal.Scale(-1)
-		}
 	}
-	return rc, mat, ok
 }

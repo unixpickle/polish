@@ -11,3 +11,5 @@ github.com/unixpickle/model3d v0.1.4 h1:bHvTzYXPuZdqgP15f9kc+/jHjdtLxkVL53k+QSMZ
 github.com/unixpickle/model3d v0.1.4/go.mod h1:/jD5uEOZVtoeyF0K1t9rCFsturMfh/gdj3fX/DVV360=
 github.com/unixpickle/model3d v0.1.5 h1:WLMkF7MzZfHMU5zg9Uj5ZAaB2sgpUxDUI7LB7emY2mM=
 github.com/unixpickle/model3d v0.1.5/go.mod h1:/jD5uEOZVtoeyF0K1t9rCFsturMfh/gdj3fX/DVV360=
+github.com/unixpickle/model3d v0.1.9 h1:mrJrynk1Mn/FEiSaEByg5CXq+1zu+BhnUMiD74vc7VY=
+github.com/unixpickle/model3d v0.1.9/go.mod h1:/jD5uEOZVtoeyF0K1t9rCFsturMfh/gdj3fX/DVV360=

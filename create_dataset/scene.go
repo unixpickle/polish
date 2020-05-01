@@ -24,9 +24,12 @@ func RandomScene(models, images []string) (render3d.Object, *render3d.RecursiveR
 	var focusProbs []float64
 
 	for _, wall := range layout.CreateBackdrop() {
-		objects = append(objects, RandomizeWallMaterial(wall, images))
+		mat := RandomizeWallMaterial(wall, images)
+		objects = append(objects, NewColliderObject(wall, mat))
 	}
 
+	var modelMeshes []*model3d.Mesh
+	var modelMats []ModelMaterial
 	for i := 0; i < numObjects; i++ {
 		path := models[rand.Intn(len(models))]
 		r, err := os.Open(path)
@@ -37,8 +40,11 @@ func RandomScene(models, images []string) (render3d.Object, *render3d.RecursiveR
 		mesh := model3d.NewMeshTriangles(tris)
 		mesh = randomRotation(mesh)
 		mesh = layout.PlaceMesh(mesh)
-		objects = append(objects, RandomizeMaterial(mesh, images))
+		mesh, mat := RandomizeMaterial(mesh, images)
+		modelMeshes = append(modelMeshes, mesh)
+		modelMats = append(modelMats, mat)
 	}
+	objects = append(objects, NewMeshesObject(modelMeshes, modelMats))
 
 	for i := 0; i < numLights; i++ {
 		light, focusPoint := layout.CreateLight()
