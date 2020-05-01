@@ -94,6 +94,7 @@ func SaveScene(outDir string, obj render3d.Object, rend *render3d.RecursiveRayTr
 	bidir.MaxStddev = 0.005 / scale
 	bidir.OversaturatedStddevs = 3
 	bidir.RouletteDelta = 0.05 / scale
+	bidir.PowerHeuristic = 2
 
 	var lastFrac float64
 	bidir.LogFunc = func(frac, samples float64) {
