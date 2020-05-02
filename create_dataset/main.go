@@ -29,8 +29,8 @@ func main() {
 	CreateOutput(args.OutputDir)
 
 	for i := 0; true; i++ {
-		obj, rend, bidir := RandomScene(models, images)
-		SaveScene(args.OutputDir, obj, rend, bidir)
+		obj, rend := RandomScene(models, images)
+		SaveScene(args.OutputDir, obj, rend)
 	}
 }
 
@@ -55,8 +55,7 @@ func CreateSceneDir(outDir string) string {
 	return ""
 }
 
-func SaveScene(outDir string, obj render3d.Object, rend *render3d.RecursiveRayTracer,
-	bidir *render3d.BidirPathTracer) {
+func SaveScene(outDir string, obj render3d.Object, rend *render3d.RecursiveRayTracer) {
 	rend.Antialias = 1.0
 	rend.MaxDepth = 10
 	rend.Cutoff = 1e-4
@@ -85,19 +84,13 @@ func SaveScene(outDir string, obj render3d.Object, rend *render3d.RecursiveRayTr
 
 	scale := BrightnessScale(images["input_512.png"])
 
-	bidir.Antialias = 1.0
-	bidir.MaxDepth = 10
-	bidir.MaxLightDepth = 4
-	bidir.Cutoff = 1e-4
-	bidir.NumSamples = 16384
-	bidir.MinSamples = 1024
-	bidir.MaxStddev = 0.005 / scale
-	bidir.OversaturatedStddevs = 3
-	bidir.RouletteDelta = 0.05 / scale
-	bidir.PowerHeuristic = 2
+	rend.NumSamples = 16384
+	rend.MinSamples = 2048
+	rend.MaxStddev = 0.005 / scale
+	rend.OversaturatedStddevs = 3
 
 	var lastFrac float64
-	bidir.LogFunc = func(frac, samples float64) {
+	rend.LogFunc = func(frac, samples float64) {
 		if frac-lastFrac > 0.1 {
 			lastFrac = frac
 			log.Printf("Progress %.1f (samples %d)", frac, int(samples))
@@ -105,7 +98,7 @@ func SaveScene(outDir string, obj render3d.Object, rend *render3d.RecursiveRayTr
 	}
 
 	target := render3d.NewImage(ImageSize, ImageSize)
-	bidir.Render(target, obj)
+	rend.Render(target, obj)
 	images["target.png"] = target
 
 	// Save all the outputs once we have created them
