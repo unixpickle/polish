@@ -87,8 +87,7 @@ func SaveScene(outDir string, obj render3d.Object, rend *render3d.RecursiveRayTr
 
 	bidir.Antialias = 1.0
 	bidir.MaxDepth = 10
-	bidir.MaxLightDepth = 4
-	bidir.Cutoff = 1e-4
+	bidir.Cutoff = 0.01 / scale
 	bidir.NumSamples = 16384
 	bidir.MinSamples = 1024
 	bidir.MaxStddev = 0.005 / scale
