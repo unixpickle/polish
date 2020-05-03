@@ -12,12 +12,14 @@ import (
 
 // RandomScene creates a random collection of objects and
 // fills out a renderer to render them.
-func RandomScene(models, images []string) (render3d.Object, *render3d.RecursiveRayTracer) {
+func RandomScene(models, images []string) (render3d.Object, *render3d.RecursiveRayTracer,
+	*render3d.BidirPathTracer) {
 	layout := RandomSceneLayout()
 	numObjects := rand.Intn(10) + 1
 	numLights := rand.Intn(10) + 1
 
 	var objects render3d.JoinedObject
+	var lights []render3d.AreaLight
 	var focusPoints []render3d.FocusPoint
 	var focusProbs []float64
 
@@ -47,6 +49,7 @@ func RandomScene(models, images []string) (render3d.Object, *render3d.RecursiveR
 	for i := 0; i < numLights; i++ {
 		light, focusPoint := layout.CreateLight()
 		objects = append(objects, light)
+		lights = append(lights, light)
 		focusPoints = append(focusPoints, focusPoint)
 		focusProbs = append(focusProbs, 0.3/float64(numLights))
 	}
@@ -55,10 +58,13 @@ func RandomScene(models, images []string) (render3d.Object, *render3d.RecursiveR
 	fov := (rand.Float64()*0.5 + 0.5) * math.Pi / 3.0
 	camera := render3d.NewCameraAt(origin, target, fov)
 	return objects, &render3d.RecursiveRayTracer{
-		Camera:          camera,
-		FocusPoints:     focusPoints,
-		FocusPointProbs: focusProbs,
-	}
+			Camera:          camera,
+			FocusPoints:     focusPoints,
+			FocusPointProbs: focusProbs,
+		}, &render3d.BidirPathTracer{
+			Camera: camera,
+			Light:  render3d.JoinAreaLights(lights...),
+		}
 }
 
 func randomRotation(m *model3d.Mesh) *model3d.Mesh {
