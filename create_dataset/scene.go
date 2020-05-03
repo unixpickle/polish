@@ -138,6 +138,7 @@ func (r RoomLayout) CameraInfo() (position, target model3d.Coord3D) {
 
 func (r RoomLayout) CreateLight() (render3d.AreaLight, render3d.FocusPoint) {
 	var center model3d.Coord3D
+	var axis model3d.Coord3D
 	if rand.Intn(2) == 0 {
 		// Place light on ceiling.
 		center = model3d.Coord3D{
@@ -145,6 +146,7 @@ func (r RoomLayout) CreateLight() (render3d.AreaLight, render3d.FocusPoint) {
 			Y: (rand.Float64() - 0.5) * r.Depth,
 			Z: 1.0,
 		}
+		axis = model3d.Coord3D{Z: 1}
 	} else {
 		// Place light on side wall.
 		x := r.Width / 2
@@ -156,6 +158,7 @@ func (r RoomLayout) CreateLight() (render3d.AreaLight, render3d.FocusPoint) {
 			Y: (rand.Float64() - 0.5) * r.Depth,
 			Z: rand.Float64() * 0.9,
 		}
+		axis = model3d.Coord3D{X: x}
 	}
 
 	var light render3d.AreaLight
@@ -177,6 +180,12 @@ func (r RoomLayout) CreateLight() (render3d.AreaLight, render3d.FocusPoint) {
 			color,
 		)
 		focusRadius = size.Norm()
+	}
+
+	light = &HalfLight{
+		AreaLight: light,
+		Axis:      axis,
+		MaxDot:    1,
 	}
 
 	return light, &render3d.SphereFocusPoint{
@@ -285,4 +294,24 @@ func (w WorldLayout) PlaceMesh(m *model3d.Mesh) *model3d.Mesh {
 	min := model3d.Coord3D{X: -7, Y: -7}
 	max := model3d.Coord3D{X: 7, Y: 7, Z: 7}
 	return placeInBounds(min, max, m)
+}
+
+type HalfLight struct {
+	render3d.AreaLight
+
+	Axis   model3d.Coord3D
+	MaxDot float64
+}
+
+func (h *HalfLight) SampleLight(gen *rand.Rand) (point, normal model3d.Coord3D, c render3d.Color) {
+	for {
+		point, normal, c = h.AreaLight.SampleLight(gen)
+		if h.Axis.Dot(point) < h.MaxDot {
+			return
+		}
+	}
+}
+
+func (h *HalfLight) Area() float64 {
+	return h.AreaLight.Area() / 2
 }
