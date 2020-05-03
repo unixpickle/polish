@@ -72,18 +72,10 @@ func createTransparent() ModelMaterial {
 	refractIndex := rand.Float64() + 1
 
 	return StaticModelMaterial{
-		Mat: &render3d.JoinedMaterial{
-			Materials: []render3d.Material{
-				&render3d.RefractMaterial{
-					IndexOfRefraction: refractIndex,
-					RefractColor:      refractColor,
-				},
-				&render3d.PhongMaterial{
-					Alpha:         200.0,
-					SpecularColor: render3d.NewColor(reflectFraction),
-				},
-			},
-			Probs: []float64{1 - reflectFraction, reflectFraction},
+		Mat: &render3d.RefractMaterial{
+			IndexOfRefraction: refractIndex,
+			RefractColor:      refractColor,
+			SpecularColor:     render3d.NewColor(1),
 		},
 	}
 }
