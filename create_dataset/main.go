@@ -60,9 +60,15 @@ func SaveScene(outDir string, obj render3d.Object, rend *render3d.RecursiveRayTr
 	rend.Antialias = 1.0
 	rend.MaxDepth = 10
 	rend.Cutoff = 1e-4
+	bidir.Antialias = 1.0
+	bidir.MaxDepth = 10
+	bidir.Cutoff = 0.01
+	bidir.RouletteDelta = 0.05
+	bidir.PowerHeuristic = 2
 
-	variance := rend.RayVariance(obj, 200, 200, 5)
-	log.Printf("Creating scene (var=%f) ...", variance)
+	variance := rend.RayVariance(obj, 200, 200, 10)
+	bidirVariance := bidir.RayVariance(obj, 200, 200, 10)
+	log.Printf("Creating scene (var=%f bidir_var=%f) ...", variance, bidirVariance)
 
 	incidence := CreateIncidenceMap(rend, obj)
 
@@ -85,15 +91,12 @@ func SaveScene(outDir string, obj render3d.Object, rend *render3d.RecursiveRayTr
 
 	scale := BrightnessScale(images["input_512.png"])
 
-	bidir.Antialias = 1.0
-	bidir.MaxDepth = 10
-	bidir.Cutoff = 0.01 / scale
 	bidir.NumSamples = 16384
 	bidir.MinSamples = 1024
 	bidir.MaxStddev = 0.005 / scale
 	bidir.OversaturatedStddevs = 3
+	bidir.Cutoff = 0.01 / scale
 	bidir.RouletteDelta = 0.05 / scale
-	bidir.PowerHeuristic = 2
 
 	var lastFrac float64
 	bidir.LogFunc = func(frac, samples float64) {
