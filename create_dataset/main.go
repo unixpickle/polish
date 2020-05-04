@@ -92,6 +92,7 @@ func SaveScene(outDir string, obj render3d.Object, rend *render3d.RecursiveRayTr
 	}
 
 	scale := BrightnessScale(images["input_512.png"])
+	log.Printf("Doing HD rendering (scale=%f)...", scale)
 
 	bidir.NumSamples = 16384
 	bidir.MinSamples = 1024
