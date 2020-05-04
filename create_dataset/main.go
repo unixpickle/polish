@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"math"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -94,8 +95,23 @@ func SaveScene(outDir string, obj render3d.Object, rend *render3d.RecursiveRayTr
 
 	bidir.NumSamples = 16384
 	bidir.MinSamples = 1024
-	bidir.MaxStddev = 0.005 / scale
-	bidir.OversaturatedStddevs = 3
+	bidir.Convergence = func(mean, stddev render3d.Color) bool {
+		meanArr := mean.Array()
+		for i, std := range stddev.Array() {
+			m := meanArr[i] * scale
+			std = std * scale
+			if m-3*std > 1 {
+				// Oversaturated cutoff.
+				continue
+			}
+			// Gamma-aware error margin.
+			delta := math.Pow(m+std, 1/2.2) - math.Pow(m, 1/2.2)
+			if delta > 0.01 {
+				return false
+			}
+		}
+		return true
+	}
 	bidir.Cutoff = 1e-5 / scale
 	bidir.RouletteDelta = 0.05 / scale
 
