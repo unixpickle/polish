@@ -158,7 +158,7 @@ func (r RoomLayout) CreateLight() (render3d.AreaLight, render3d.FocusPoint) {
 			Y: (rand.Float64() - 0.5) * r.Depth,
 			Z: rand.Float64() * 0.9,
 		}
-		axis = model3d.Coord3D{X: x}
+		axis = model3d.Coord3D{X: 1 / x}
 	}
 
 	var light render3d.AreaLight
