@@ -9,7 +9,7 @@ const (
 	// that operates only on the pixels of an RGB image.
 	//
 	// It is fast, but the smoothing is very primitive.
-	ModelTypeShallow = iota
+	ModelTypeShallow ModelType = iota
 )
 
 // LCD gets a factor which must divide the dimensions of
