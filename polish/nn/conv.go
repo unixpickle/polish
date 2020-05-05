@@ -64,6 +64,67 @@ func (c *Conv) transposedFeatures() []*Tensor {
 	return result
 }
 
+// SpatialConv is a spatial-only 2D convolution operator.
+// Unlike Conv, it uses a separate depthwise filter for
+// each channel of the input; channels are not mixed.
+//
+// It contains weights of the shape:
+//
+//     [depth x kernel_size x kernel_size]
+//
+type SpatialConv struct {
+	Depth      int
+	KernelSize int
+	Stride     int
+	Weights    []float32
+}
+
+// Apply applies the convolution to a Tensor.
+//
+// The resulting Tensor's size is determined by
+// ConvOutputSize().
+func (s *SpatialConv) Apply(t *Tensor) *Tensor {
+	if t.Depth != s.Depth {
+		panic("input Tensor does not have the correct number of channels")
+	}
+	outH, outW := ConvOutputSize(t.Height, t.Width, s.KernelSize, s.Stride)
+	out := NewTensor(outH, outW, s.Depth)
+
+	var outIdx int
+	features := s.features()
+	Patches(t, s.KernelSize, s.Stride, func(patch *Tensor) {
+		for i, feature := range features {
+			patchIdx := i
+			var dot float32
+			for _, x := range feature.Data {
+				dot += x * patch.Data[patchIdx]
+				patchIdx += s.Depth
+			}
+			out.Data[outIdx] = dot
+			outIdx++
+		}
+	})
+
+	return out
+}
+
+func (s *SpatialConv) features() []*Tensor {
+	featureStride := s.KernelSize * s.KernelSize
+	var featureIdx int
+	var result []*Tensor
+	for i := 0; i < s.Depth; i++ {
+		feature := s.Weights[featureIdx : featureIdx+featureStride]
+		featureIdx += featureStride
+		result = append(result, &Tensor{
+			Height: s.KernelSize,
+			Width:  s.KernelSize,
+			Depth:  1,
+			Data:   feature,
+		})
+	}
+	return result
+}
+
 // Patches extracts image patches for a convolution of the
 // given kernel size and stride, and calls f with each
 // patch.
