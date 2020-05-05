@@ -11,9 +11,13 @@ import (
 
 	"github.com/unixpickle/essentials"
 	"github.com/unixpickle/model3d/render3d"
+	"github.com/unixpickle/polish/polish"
 )
 
-const ImageSize = 256
+const (
+	ImageSize     = 256
+	AlbedoSamples = 100
+)
 
 func main() {
 	rand.Seed(time.Now().UnixNano())
@@ -72,7 +76,10 @@ func SaveScene(outDir string, obj render3d.Object, rend *render3d.RecursiveRayTr
 	bidirVariance := bidir.RayVariance(obj, 200, 200, 10)
 	log.Printf("Creating scene (var=%f bidir_var=%f) ...", variance, bidirVariance)
 
-	incidence := CreateIncidenceMap(rend, obj)
+	incidence := polish.CreateIncidenceMap(rend, obj, ImageSize, ImageSize)
+	albedo := polish.CreateAlbedoMap(rend, obj, ImageSize, ImageSize, AlbedoSamples)
+
+	log.Println("Creating low-res renderings ...")
 
 	renderAtRes := func(samples int) *render3d.Image {
 		rend.NumSamples = samples
@@ -92,7 +99,7 @@ func SaveScene(outDir string, obj render3d.Object, rend *render3d.RecursiveRayTr
 	}
 
 	scale := BrightnessScale(images["input_512.png"])
-	log.Printf("Doing HD rendering (scale=%f)...", scale)
+	log.Printf("Creating HD rendering (scale=%f) ...", scale)
 
 	bidir.NumSamples = 16384
 	bidir.MinSamples = 1024
@@ -120,7 +127,7 @@ func SaveScene(outDir string, obj render3d.Object, rend *render3d.RecursiveRayTr
 	bidir.LogFunc = func(frac, samples float64) {
 		if frac-lastFrac > 0.1 {
 			lastFrac = frac
-			log.Printf("Progress %.1f (samples %d)", frac, int(samples))
+			log.Printf(" * progress %.1f (samples %d)", frac, int(samples))
 		}
 	}
 
@@ -136,5 +143,6 @@ func SaveScene(outDir string, obj render3d.Object, rend *render3d.RecursiveRayTr
 		img.Scale(scale)
 		img.Save(filepath.Join(sampleDir, name))
 	}
-	SaveIncidenceMap(filepath.Join(sampleDir, "incidence.png"), incidence)
+	essentials.Must(polish.SaveFeatureMap(filepath.Join(sampleDir, "incidence.png"), incidence))
+	essentials.Must(polish.SaveFeatureMap(filepath.Join(sampleDir, "albedo.png"), albedo))
 }
