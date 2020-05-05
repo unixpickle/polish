@@ -86,7 +86,13 @@ func (t *Tensor) RGB() image.Image {
 		for x := 0; x < t.Width; x++ {
 			var colors [3]uint8
 			for i := 0; i < 3; i++ {
-				colors[i] = uint8(t.Data[idx+i] * 255.999)
+				x := t.Data[idx+i]
+				if x < 0 {
+					x = 0
+				} else if x > 1 {
+					x = 1
+				}
+				colors[i] = uint8(x * 255.999)
 			}
 			idx += 3
 			res.SetRGBA(x, y, color.RGBA{
