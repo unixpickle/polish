@@ -45,8 +45,8 @@ func NewTensor(height, width, depth int) *Tensor {
 }
 
 // At gets a pointer to the given coordinate.
-func (t *Tensor) At(x, y, z int) *float32 {
-	return &t.Data[z+t.Depth*(y+x*t.Width)]
+func (t *Tensor) At(y, x, z int) *float32 {
+	return &t.Data[z+t.Depth*(x+y*t.Width)]
 }
 
 // Pad creates a zero-padded version of the Tensor.
