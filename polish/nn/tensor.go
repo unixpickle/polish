@@ -1,5 +1,10 @@
 package nn
 
+import (
+	"image"
+	"image/color"
+)
+
 // Tensor is a 3D array of numbers.
 //
 // It is arranged as [height x width x depth], with the
@@ -10,6 +15,23 @@ type Tensor struct {
 	Depth  int
 
 	Data []float32
+}
+
+// NewTensorRGB creates an RGB Tensor from an image.
+func NewTensorRGB(img image.Image) *Tensor {
+	b := img.Bounds()
+	res := NewTensor(b.Dy(), b.Dx(), 3)
+	var idx int
+	for y := 0; y < res.Height; y++ {
+		for x := 0; x < res.Width; x++ {
+			red, green, blue, _ := img.At(x+b.Min.X, y+b.Min.Y).RGBA()
+			for _, c := range []uint32{red, green, blue} {
+				res.Data[idx] = float32(c) / 0xffff
+				idx++
+			}
+		}
+	}
+	return res
 }
 
 // NewTensor creates a zero tensor.
@@ -46,6 +68,34 @@ func (t *Tensor) Unpad(top, right, bottom, left int) *Tensor {
 	for i := top; i < t.Height-bottom; i++ {
 		start := t.Depth * (left + t.Width*i)
 		copy(res.Data[res.Depth*res.Width*(i-top):], t.Data[start:start+rowSize])
+	}
+	return res
+}
+
+// RGB creates an RGB image out of the Tensor.
+//
+// If the tensor does not have three channels, this will
+// panic().
+func (t *Tensor) RGB() image.Image {
+	if t.Depth != 3 {
+		panic("expected exactly 3 output channels")
+	}
+	res := image.NewRGBA(image.Rect(0, 0, t.Width, t.Height))
+	var idx int
+	for y := 0; y < t.Height; y++ {
+		for x := 0; x < t.Width; x++ {
+			var colors [3]uint8
+			for i := 0; i < 3; i++ {
+				colors[i] = uint8(t.Data[idx+i] * 255.999)
+			}
+			idx += 3
+			res.SetRGBA(x, y, color.RGBA{
+				R: colors[0],
+				G: colors[1],
+				B: colors[2],
+				A: 0xff,
+			})
+		}
 	}
 	return res
 }
