@@ -22,6 +22,11 @@ type Pad struct {
 	Left   int
 }
 
+// NewPad creates a Pad with the given values.
+func NewPad(t, r, b, l int) *Pad {
+	return &Pad{t, r, b, l}
+}
+
 // Apply pads the Tensor.
 func (p *Pad) Apply(t *Tensor) *Tensor {
 	return t.Pad(p.Top, p.Right, p.Bottom, p.Left)
@@ -33,6 +38,11 @@ type Unpad struct {
 	Right  int
 	Bottom int
 	Left   int
+}
+
+// NewUnpad creates an Unpad with the given values.
+func NewUnpad(t, r, b, l int) *Unpad {
+	return &Unpad{t, r, b, l}
 }
 
 // Apply unpads (crops) the Tensor.
