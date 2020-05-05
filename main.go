@@ -33,7 +33,7 @@ func main() {
 	if model == "shallow" {
 		modelType = polish.ModelTypeShallow
 	} else if model == "deep" {
-		panic("deep not implemented yet")
+		modelType = polish.ModelTypeDeep
 	} else {
 		flag.Usage()
 	}

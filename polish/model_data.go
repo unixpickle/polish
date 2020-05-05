@@ -1,6 +1,15 @@
 package polish
 
-import "github.com/unixpickle/polish/polish/nn"
+import (
+	"archive/zip"
+	"bytes"
+	"encoding/binary"
+	"fmt"
+	"io/ioutil"
+
+	"github.com/unixpickle/essentials"
+	"github.com/unixpickle/polish/polish/nn"
+)
 
 func createShallow() nn.Layer {
 	return nn.NN{
@@ -514,4 +523,111 @@ func createShallow() nn.Layer {
 			Data: []float32{0.001812, 0.002039, -0.003676},
 		},
 	}
+}
+
+const deepModelZipData = ""
+
+func createDeep() nn.Layer {
+	zipData := []byte(deepModelZipData)
+	byteReader := bytes.NewReader(zipData)
+	zipReader, err := zip.NewReader(byteReader, int64(len(zipData)))
+	essentials.Must(err)
+
+	params := map[string][]float32{}
+	for _, file := range zipReader.File {
+		r, err := file.Open()
+		essentials.Must(err)
+		data, err := ioutil.ReadAll(r)
+		essentials.Must(err)
+		values := make([]float32, len(data)/4)
+		binary.Read(bytes.NewReader(data), binary.LittleEndian, values)
+		params[file.Name] = values
+	}
+
+	result := nn.NN{
+		nn.NewPad(2, 2, 2, 2),
+		&nn.Conv{
+			InDepth:    3,
+			OutDepth:   64,
+			KernelSize: 5,
+			Stride:     2,
+			Weights:    params["conv1.weight"],
+		},
+		&nn.Bias{Data: params["conv1.bias"]},
+		nn.ReLU{},
+
+		nn.NewPad(2, 2, 2, 2),
+		&nn.Conv{
+			InDepth:    64,
+			OutDepth:   128,
+			KernelSize: 5,
+			Stride:     2,
+			Weights:    params["conv2.weight"],
+		},
+		&nn.Bias{Data: params["conv2.bias"]},
+	}
+
+	for i := 0; i < 3; i++ {
+		layer := fmt.Sprintf("residuals.%d", i)
+		result = append(result, nn.Residual{
+			&nn.GroupNorm{NumGroups: 8},
+			&nn.Mul{Data: params[layer+".0.weight"]},
+			&nn.Bias{Data: params[layer+".0.bias"]},
+			nn.ReLU{},
+			nn.NewPad(1, 1, 1, 1),
+			&nn.Conv{
+				InDepth:    128,
+				OutDepth:   256,
+				KernelSize: 3,
+				Stride:     1,
+				Weights:    params[layer+".2.weight"],
+			},
+			&nn.Bias{Data: params[layer+".2.bias"]},
+			nn.ReLU{},
+			nn.NewPad(1, 1, 1, 1),
+			&nn.Conv{
+				InDepth:    256,
+				OutDepth:   128,
+				KernelSize: 3,
+				Stride:     1,
+				Weights:    params[layer+".4.weight"],
+			},
+			&nn.Bias{Data: params[layer+".4.bias"]},
+		})
+	}
+
+	result = append(result,
+		&nn.Deconv{
+			InDepth:    128,
+			OutDepth:   64,
+			KernelSize: 4,
+			Stride:     2,
+			Weights:    params["deconv1.weight"],
+		},
+		nn.NewUnpad(1, 1, 1, 1),
+		&nn.Bias{Data: params["deconv1.bias"]},
+		nn.ReLU{},
+
+		&nn.Deconv{
+			InDepth:    64,
+			OutDepth:   32,
+			KernelSize: 4,
+			Stride:     2,
+			Weights:    params["deconv2.weight"],
+		},
+		nn.NewUnpad(1, 1, 1, 1),
+		&nn.Bias{Data: params["deconv2.bias"]},
+		nn.ReLU{},
+
+		&nn.Conv{
+			InDepth:    32,
+			OutDepth:   3,
+			KernelSize: 3,
+			Stride:     1,
+			Weights:    params["conv3.weight"],
+		},
+		&nn.Bias{Data: params["conv3.bias"]},
+	)
+
+	return result
 }
