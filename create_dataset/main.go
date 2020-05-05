@@ -76,8 +76,8 @@ func SaveScene(outDir string, obj render3d.Object, rend *render3d.RecursiveRayTr
 	bidirVariance := bidir.RayVariance(obj, 200, 200, 10)
 	log.Printf("Creating scene (var=%f bidir_var=%f) ...", variance, bidirVariance)
 
-	incidence := polish.CreateIncidenceMap(rend, obj, ImageSize, ImageSize)
-	albedo := polish.CreateAlbedoMap(rend, obj, ImageSize, ImageSize, AlbedoSamples)
+	incidence := polish.CreateIncidenceMap(rend.Camera, obj, ImageSize, ImageSize)
+	albedo := polish.CreateAlbedoMap(rend.Camera, obj, ImageSize, ImageSize, AlbedoSamples)
 
 	log.Println("Creating low-res renderings ...")
 

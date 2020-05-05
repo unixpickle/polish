@@ -15,14 +15,14 @@ import (
 // CreateIncidenceMap creates a feature image where each
 // pixel indicates the dot product of the camera ray with
 // the normal of the first ray collision.
-func CreateIncidenceMap(r *render3d.RecursiveRayTracer, obj render3d.Object,
+func CreateIncidenceMap(c *render3d.Camera, obj render3d.Object,
 	width, height int) *image.Gray {
-	caster := r.Camera.Caster(float64(width)-1, float64(height)-1)
+	caster := c.Caster(float64(width)-1, float64(height)-1)
 	img := image.NewGray(image.Rect(0, 0, width, height))
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
 			ray := &model3d.Ray{
-				Origin:    r.Camera.Origin,
+				Origin:    c.Origin,
 				Direction: caster(float64(x), float64(y)),
 			}
 			coll, _, ok := obj.Cast(ray)
@@ -43,16 +43,16 @@ func CreateIncidenceMap(r *render3d.RecursiveRayTracer, obj render3d.Object,
 // BSDF is sampled to approximate the albedo.
 // A higher value gives more accurate results for complex
 // materials.
-func CreateAlbedoMap(r *render3d.RecursiveRayTracer, obj render3d.Object,
+func CreateAlbedoMap(c *render3d.Camera, obj render3d.Object,
 	width, height, bsdfSamples int) *image.RGBA {
-	caster := r.Camera.Caster(float64(width)-1, float64(height)-1)
+	caster := c.Caster(float64(width)-1, float64(height)-1)
 	res := render3d.NewImage(width, height)
 	gen := rand.New(rand.NewSource(rand.Int63()))
 	var idx int
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
 			ray := &model3d.Ray{
-				Origin:    r.Camera.Origin,
+				Origin:    c.Origin,
 				Direction: caster(float64(x), float64(y)),
 			}
 			coll, mat, ok := obj.Cast(ray)
