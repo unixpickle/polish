@@ -526,9 +526,129 @@ func createShallow() nn.Layer {
 }
 
 const deepModelZipData = ""
+const deepSepModelZipData = ""
 
 func createDeep() nn.Layer {
-	zipData := []byte(deepModelZipData)
+	params := readParameterZip(deepModelZipData)
+
+	result := nn.NN{
+		loadConv(params, "conv1", 5, 2, 3, 64),
+		nn.ReLU{},
+		loadConv(params, "conv2", 5, 2, 64, 128),
+	}
+
+	for i := 0; i < 3; i++ {
+		layer := fmt.Sprintf("residuals.%d", i)
+		result = append(result, nn.Residual{
+			&nn.GroupNorm{NumGroups: 8},
+			&nn.Mul{Data: params[layer+".0.weight"]},
+			&nn.Bias{Data: params[layer+".0.bias"]},
+			nn.ReLU{},
+			loadConv(params, layer+".2", 3, 1, 128, 256),
+			nn.ReLU{},
+			loadConv(params, layer+".4", 3, 1, 256, 128),
+		})
+	}
+
+	result = append(result,
+		loadDeconv(params, "deconv1", 4, 2, 128, 64),
+		nn.ReLU{},
+		loadDeconv(params, "deconv2", 4, 2, 64, 32),
+		nn.ReLU{},
+		loadConv(params, "conv3", 3, 1, 32, 3),
+	)
+
+	return result
+}
+
+func createDeepSep() nn.Layer {
+	params := readParameterZip(deepSepModelZipData)
+
+	result := nn.NN{
+		loadConv(params, "conv1", 5, 2, 3, 64),
+		nn.ReLU{},
+		loadDepthSepConv(params, "conv2", 5, 2, 64, 128),
+	}
+
+	for i := 0; i < 3; i++ {
+		layer := fmt.Sprintf("residuals.%d", i)
+		result = append(result, nn.Residual{
+			&nn.GroupNorm{NumGroups: 8},
+			&nn.Mul{Data: params[layer+".0.weight"]},
+			&nn.Bias{Data: params[layer+".0.bias"]},
+			nn.ReLU{},
+			loadDepthSepConv(params, layer+".2", 3, 1, 128, 256),
+			nn.ReLU{},
+			loadDepthSepConv(params, layer+".4", 3, 1, 256, 128),
+		})
+	}
+
+	result = append(result,
+		loadDeconv(params, "deconv1", 4, 2, 128, 64),
+		nn.ReLU{},
+		loadDeconv(params, "deconv2", 4, 2, 64, 32),
+		nn.ReLU{},
+		loadConv(params, "conv3", 3, 1, 32, 3),
+	)
+
+	return result
+}
+
+func loadConv(p map[string][]float32, key string, kernel, stride, inDepth, outDepth int) nn.Layer {
+	return nn.NN{
+		nn.NewPad(kernel/2, kernel/2, kernel/2, kernel/2),
+		&nn.Conv{
+			InDepth:    inDepth,
+			OutDepth:   outDepth,
+			KernelSize: kernel,
+			Stride:     stride,
+			Weights:    p[key+".weight"],
+		},
+		&nn.Bias{Data: p[key+".bias"]},
+	}
+}
+
+func loadDeconv(p map[string][]float32, key string, kernel, stride,
+	inDepth, outDepth int) nn.Layer {
+	s := (kernel - 1) / 2
+	return nn.NN{
+		&nn.Deconv{
+			InDepth:    inDepth,
+			OutDepth:   outDepth,
+			KernelSize: kernel,
+			Stride:     stride,
+			Weights:    p[key+".weight"],
+		},
+		nn.NewUnpad(s, s, s, s),
+		&nn.Bias{Data: p[key+".bias"]},
+	}
+}
+
+func loadDepthSepConv(p map[string][]float32, key string,
+	kernel, stride, inDepth, outDepth int) nn.Layer {
+	return nn.NN{
+		nn.NewPad(kernel/2, kernel/2, kernel/2, kernel/2),
+		&nn.SpatialConv{
+			Depth:      inDepth,
+			KernelSize: kernel,
+			Stride:     stride,
+			Weights:    p[key+".spatial.weight"],
+		},
+		&nn.Bias{Data: p[key+".spatial.bias"]},
+		nn.ReLU{},
+		&nn.Conv{
+			InDepth:    inDepth,
+			OutDepth:   outDepth,
+			KernelSize: 1,
+			Stride:     1,
+			Weights:    p[key+".depthwise.weight"],
+		},
+		&nn.Bias{Data: p[key+".depthwise.bias"]},
+	}
+}
+
+func readParameterZip(rawZip string) map[string][]float32 {
+	zipData := []byte(rawZip)
 	byteReader := bytes.NewReader(zipData)
 	zipReader, err := zip.NewReader(byteReader, int64(len(zipData)))
 	essentials.Must(err)
@@ -544,90 +664,5 @@ func createDeep() nn.Layer {
 		params[file.Name] = values
 	}
 
-	result := nn.NN{
-		nn.NewPad(2, 2, 2, 2),
-		&nn.Conv{
-			InDepth:    3,
-			OutDepth:   64,
-			KernelSize: 5,
-			Stride:     2,
-			Weights:    params["conv1.weight"],
-		},
-		&nn.Bias{Data: params["conv1.bias"]},
-		nn.ReLU{},
-
-		nn.NewPad(2, 2, 2, 2),
-		&nn.Conv{
-			InDepth:    64,
-			OutDepth:   128,
-			KernelSize: 5,
-			Stride:     2,
-			Weights:    params["conv2.weight"],
-		},
-		&nn.Bias{Data: params["conv2.bias"]},
-	}
-
-	for i := 0; i < 3; i++ {
-		layer := fmt.Sprintf("residuals.%d", i)
-		result = append(result, nn.Residual{
-			&nn.GroupNorm{NumGroups: 8},
-			&nn.Mul{Data: params[layer+".0.weight"]},
-			&nn.Bias{Data: params[layer+".0.bias"]},
-			nn.ReLU{},
-			nn.NewPad(1, 1, 1, 1),
-			&nn.Conv{
-				InDepth:    128,
-				OutDepth:   256,
-				KernelSize: 3,
-				Stride:     1,
-				Weights:    params[layer+".2.weight"],
-			},
-			&nn.Bias{Data: params[layer+".2.bias"]},
-			nn.ReLU{},
-			nn.NewPad(1, 1, 1, 1),
-			&nn.Conv{
-				InDepth:    256,
-				OutDepth:   128,
-				KernelSize: 3,
-				Stride:     1,
-				Weights:    params[layer+".4.weight"],
-			},
-			&nn.Bias{Data: params[layer+".4.bias"]},
-		})
-	}
-
-	result = append(result,
-		&nn.Deconv{
-			InDepth:    128,
-			OutDepth:   64,
-			KernelSize: 4,
-			Stride:     2,
-			Weights:    params["deconv1.weight"],
-		},
-		nn.NewUnpad(1, 1, 1, 1),
-		&nn.Bias{Data: params["deconv1.bias"]},
-		nn.ReLU{},
-
-		&nn.Deconv{
-			InDepth:    64,
-			OutDepth:   32,
-			KernelSize: 4,
-			Stride:     2,
-			Weights:    params["deconv2.weight"],
-		},
-		nn.NewUnpad(1, 1, 1, 1),
-		&nn.Bias{Data: params["deconv2.bias"]},
-		nn.ReLU{},
-
-		&nn.Conv{
-			InDepth:    32,
-			OutDepth:   3,
-			KernelSize: 3,
-			Stride:     1,
-			Weights:    params["conv3.weight"],
-		},
-		&nn.Bias{Data: params["conv3.bias"]},
-	)
-
-	return result
+	return params
 }
