@@ -58,21 +58,33 @@ func CreateAlbedoMap(c *render3d.Camera, obj render3d.Object,
 			coll, mat, ok := obj.Cast(ray)
 			if ok {
 				dest := ray.Direction.Scale(-1).Normalize()
-				var colorSum render3d.Color
-				for i := 0; i < bsdfSamples; i++ {
-					source := mat.SampleSource(gen, coll.Normal, dest)
-					density := mat.SourceDensity(coll.Normal, source, dest)
-					bsdf := mat.BSDF(coll.Normal, source, dest)
-					sourceDot := math.Abs(source.Dot(coll.Normal))
-					colorSum = colorSum.Add(bsdf.Scale(sourceDot / density))
-				}
-				color := colorSum.Scale(1 / float64(bsdfSamples))
-				res.Data[idx] = color
+				res.Data[idx] = estimateAlbedo(gen, mat, coll.Normal, dest, bsdfSamples)
 				idx++
 			}
 		}
 	}
 	return res.RGBA()
+}
+
+func estimateAlbedo(gen *rand.Rand, mat render3d.Material, normal, dest model3d.Coord3D,
+	bsdfSamples int) render3d.Color {
+	switch mat := mat.(type) {
+	case *render3d.LambertMaterial:
+		if normal.Dot(dest) < 0 {
+			return render3d.Color{}
+		}
+		return mat.DiffuseColor
+	default:
+		var colorSum render3d.Color
+		for i := 0; i < bsdfSamples; i++ {
+			source := mat.SampleSource(gen, normal, dest)
+			density := mat.SourceDensity(normal, source, dest)
+			bsdf := mat.BSDF(normal, source, dest)
+			sourceDot := math.Abs(source.Dot(normal))
+			colorSum = colorSum.Add(bsdf.Scale(sourceDot / density))
+		}
+		return colorSum.Scale(1 / float64(bsdfSamples))
+	}
 }
 
 // SaveFeatureMap encodes a feature map image to a PNG
