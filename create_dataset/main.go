@@ -16,7 +16,7 @@ import (
 
 const (
 	ImageSize     = 256
-	AlbedoSamples = 100
+	AlbedoSamples = 400
 )
 
 func main() {
