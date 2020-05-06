@@ -20,44 +20,8 @@ func createShallow() nn.Layer {
 	}
 }
 
-const deepModelZipData = ""
-const deepSepModelZipData = ""
-
 func createDeep() nn.Layer {
 	params := readParameterZip(deepModelZipData)
-
-	result := nn.NN{
-		loadConv(params, "conv1", 5, 2, 3, 64),
-		nn.ReLU{},
-		loadConv(params, "conv2", 5, 2, 64, 128),
-	}
-
-	for i := 0; i < 3; i++ {
-		layer := fmt.Sprintf("residuals.%d", i)
-		result = append(result, nn.Residual{
-			&nn.GroupNorm{NumGroups: 8},
-			&nn.Mul{Data: params[layer+".0.weight"]},
-			&nn.Bias{Data: params[layer+".0.bias"]},
-			nn.ReLU{},
-			loadConv(params, layer+".2", 3, 1, 128, 256),
-			nn.ReLU{},
-			loadConv(params, layer+".4", 3, 1, 256, 128),
-		})
-	}
-
-	result = append(result,
-		loadDeconv(params, "deconv1", 4, 2, 128, 64),
-		nn.ReLU{},
-		loadDeconv(params, "deconv2", 4, 2, 64, 32),
-		nn.ReLU{},
-		loadConv(params, "conv3", 3, 1, 32, 3),
-	)
-
-	return result
-}
-
-func createDeepSep() nn.Layer {
-	params := readParameterZip(deepSepModelZipData)
 
 	result := nn.NN{
 		loadConv(params, "conv1", 5, 2, 3, 64),
@@ -65,7 +29,7 @@ func createDeepSep() nn.Layer {
 		loadDepthSepConv(params, "conv2", 5, 2, 64, 128),
 	}
 
-	for i := 0; i < 3; i++ {
+	for i := 0; i < 4; i++ {
 		layer := fmt.Sprintf("residuals.%d", i)
 		result = append(result, nn.Residual{
 			&nn.GroupNorm{NumGroups: 8},

@@ -17,7 +17,6 @@ def all_models(**kwargs):
         'linear': LinearDenoiser(**kwargs),
         'shallow': ShallowDenoiser(**kwargs),
         'deep': DeepDenoiser(**kwargs),
-        'deepsep': DeepDenoiser(**kwargs, conv2d=SepConv2d),
     }
 
 
@@ -83,12 +82,26 @@ class ShallowDenoiser(Denoiser):
         return x
 
 
+class SepConv2d(nn.Module):
+    def __init__(self, depth_in, depth_out, kernel_size, stride=1, padding=0):
+        super().__init__()
+        self.spatial = nn.Conv2d(depth_in, depth_in, kernel_size,
+                                 stride=stride, padding=padding, groups=depth_in)
+        self.depthwise = nn.Conv2d(depth_in, depth_out, 1)
+
+    def forward(self, x):
+        x = self.spatial(x)
+        x = F.relu(x)
+        x = self.depthwise(x)
+        return x
+
+
 class DeepDenoiser(Denoiser):
     """
     A denoiser that has multiple hidden layers.
     """
 
-    def __init__(self, incident=False, conv2d=nn.Conv2d):
+    def __init__(self, incident=False, conv2d=SepConv2d):
         super().__init__()
         self.conv1 = nn.Conv2d(4 if incident else 3, 64, 5, padding=2, stride=2)
         self.conv2 = conv2d(64, 128, 5, padding=2, stride=2)
@@ -99,7 +112,7 @@ class DeepDenoiser(Denoiser):
             conv2d(128, 256, 3, padding=1),
             nn.ReLU(),
             conv2d(256, 128, 3, padding=1),
-        ) for _ in range(3)])
+        ) for _ in range(4)])
 
         self.deconv1 = nn.ConvTranspose2d(128, 64, 4, padding=1, stride=2)
         self.deconv2 = nn.ConvTranspose2d(64, 32, 4, padding=1, stride=2)
@@ -122,18 +135,4 @@ class DeepDenoiser(Denoiser):
         x = self.deconv2(x)
         x = F.relu(x)
         x = self.conv3(x)
-        return x
-
-
-class SepConv2d(nn.Module):
-    def __init__(self, depth_in, depth_out, kernel_size, stride=1, padding=0):
-        super().__init__()
-        self.spatial = nn.Conv2d(depth_in, depth_in, kernel_size,
-                                 stride=stride, padding=padding, groups=depth_in)
-        self.depthwise = nn.Conv2d(depth_in, depth_out, 1)
-
-    def forward(self, x):
-        x = self.spatial(x)
-        x = F.relu(x)
-        x = self.depthwise(x)
         return x

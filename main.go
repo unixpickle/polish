@@ -15,7 +15,7 @@ import (
 
 func main() {
 	var model string
-	flag.StringVar(&model, "model", "shallow", "type of model to use ('shallow' or 'deep')")
+	flag.StringVar(&model, "model", "deep", "type of model to use ('shallow' or 'deep')")
 	flag.Usage = func() {
 		fmt.Fprintln(os.Stderr, "Usage: "+os.Args[0]+" [flags] <input.png> <output.png>")
 		fmt.Fprintln(os.Stderr)
