@@ -14,3 +14,12 @@ func BenchmarkShallow(b *testing.B) {
 		layer.Apply(input)
 	}
 }
+
+func BenchmarkDeep(b *testing.B) {
+	layer := ModelTypeDeep.Layer()
+	input := nn.NewTensor(512, 512, 3)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		layer.Apply(input)
+	}
+}
