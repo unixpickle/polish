@@ -4,6 +4,7 @@ Machine learning models for denoising.
 
 from abc import abstractproperty
 
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -17,6 +18,7 @@ def all_models(**kwargs):
         'linear': LinearDenoiser(**kwargs),
         'shallow': ShallowDenoiser(**kwargs),
         'deep': DeepDenoiser(**kwargs),
+        'bilateral': BilateralDenoiser(**kwargs),
     }
 
 
@@ -136,3 +138,54 @@ class DeepDenoiser(Denoiser):
         x = F.relu(x)
         x = self.conv3(x)
         return x
+
+
+class BilateralDenoiser(Denoiser):
+    """
+    A denoiser that uses a bilateral filter with learned
+    parameters.
+    """
+
+    def __init__(self, filter_size=15, incident=False):
+        super().__init__()
+
+        if not filter_size % 2:
+            raise ValueError('filter size must be odd')
+
+        self.incident = incident
+        self.filter_size = filter_size
+
+        distances = np.zeros([filter_size]*2, dtype=np.float32)
+        middle = filter_size // 2
+        for i in range(filter_size):
+            for j in range(filter_size):
+                distances[i, j] = (i-middle)*(i-middle) + (j-middle)*(j-middle)
+
+        self.register_buffer('distances', torch.from_numpy(distances).view(-1))
+        self.blur_sigma = nn.Parameter(torch.Tensor([5.0])[0])
+        self.diff_sigma = nn.Parameter(torch.Tensor([1.0])[0])
+
+    @property
+    def dim_lcd(self):
+        return 1
+
+    def forward(self, x):
+        print(self.blur_sigma, self.diff_sigma)
+        if self.incident:
+            x = x[:, :3]
+        # Create patches tensor: [N x C x K^2 x H x W]
+        padding = self.filter_size // 2
+        padded = F.pad(x, [padding] * 4)
+        patches = F.unfold(padded, self.filter_size)
+        patches = patches.view(*x.shape[:2], self.filter_size**2, *x.shape[2:])
+
+        diffs = torch.pow(patches - x[:, :, None], 2)
+        diffs = diffs / torch.pow(self.diff_sigma, 2)
+
+        blurs = torch.zeros_like(patches) + self.distances[None, None, :, None, None]
+        blurs = blurs / torch.pow(self.blur_sigma, 2)
+
+        probs = torch.exp(-(diffs + blurs))
+        probs = probs / torch.sum(probs, dim=2, keepdim=True)
+
+        return torch.sum(patches * probs, dim=2)
