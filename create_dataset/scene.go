@@ -312,6 +312,6 @@ func (h *HalfLight) SampleLight(gen *rand.Rand) (point, normal model3d.Coord3D, 
 	}
 }
 
-func (h *HalfLight) Area() float64 {
-	return h.AreaLight.Area() / 2
+func (h *HalfLight) TotalEmission() float64 {
+	return h.AreaLight.TotalEmission() / 2
 }
