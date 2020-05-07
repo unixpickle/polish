@@ -1,5 +1,10 @@
 package nn
 
+import (
+	"runtime"
+	"sync"
+)
+
 // Conv is a 2D convolution operator.
 //
 // It contains weights of the shape:
@@ -25,16 +30,14 @@ func (c *Conv) Apply(t *Tensor) *Tensor {
 	outH, outW := ConvOutputSize(t.Height, t.Width, c.KernelSize, c.Stride)
 	out := NewTensor(outH, outW, c.OutDepth)
 
-	var outIdx int
 	features := c.transposedFeatures()
-	Patches(t, c.KernelSize, c.Stride, func(patch *Tensor) {
-		for _, feature := range features {
+	Patches(t, c.KernelSize, c.Stride, func(outIdx int, patch *Tensor) {
+		for i, feature := range features {
 			var dot float32
 			for i, x := range patch.Data {
 				dot += x * feature.Data[i]
 			}
-			out.Data[outIdx] = dot
-			outIdx++
+			out.Data[outIdx*len(features)+i] = dot
 		}
 	})
 
@@ -90,9 +93,8 @@ func (s *SpatialConv) Apply(t *Tensor) *Tensor {
 	outH, outW := ConvOutputSize(t.Height, t.Width, s.KernelSize, s.Stride)
 	out := NewTensor(outH, outW, s.Depth)
 
-	var outIdx int
 	features := s.features()
-	Patches(t, s.KernelSize, s.Stride, func(patch *Tensor) {
+	Patches(t, s.KernelSize, s.Stride, func(outIdx int, patch *Tensor) {
 		for i, feature := range features {
 			patchIdx := i
 			var dot float32
@@ -100,8 +102,7 @@ func (s *SpatialConv) Apply(t *Tensor) *Tensor {
 				dot += x * patch.Data[patchIdx]
 				patchIdx += s.Depth
 			}
-			out.Data[outIdx] = dot
-			outIdx++
+			out.Data[outIdx*len(features)+i] = dot
 		}
 	})
 
@@ -129,17 +130,35 @@ func (s *SpatialConv) features() []*Tensor {
 // given kernel size and stride, and calls f with each
 // patch.
 //
-// The patches are enumerated in left to right, top to
-// bottom order, so that f is called in order of the
-// pixels in an output image.
-func Patches(t *Tensor, kernelSize, stride int, f func(*Tensor)) {
-	patch := NewTensor(kernelSize, kernelSize, t.Depth)
-	for y := 0; y+kernelSize <= t.Height; y += stride {
-		for x := 0; x+kernelSize <= t.Width; x += stride {
-			copyPatch(patch, t, x, y)
-			f(patch)
-		}
+// It may call f from multiple Goroutines concurrently.
+//
+// The patches may be passed to f in any order.
+// The index passed as the first argument to f goes left
+// to right, top to bottom, so that patches are indexed
+// like the pixels of an output image.
+func Patches(t *Tensor, kernelSize, stride int, f func(int, *Tensor)) {
+	numGos := runtime.GOMAXPROCS(0)
+
+	_, outCols := ConvOutputSize(t.Height, t.Width, kernelSize, stride)
+
+	var wg sync.WaitGroup
+	for i := 0; i < numGos; i++ {
+		wg.Add(1)
+		go func(goIdx int) {
+			defer wg.Done()
+			patch := NewTensor(kernelSize, kernelSize, t.Depth)
+			idx := goIdx * outCols
+			for y := goIdx * stride; y+kernelSize <= t.Height; y += stride * numGos {
+				for x := 0; x+kernelSize <= t.Width; x += stride {
+					copyPatch(patch, t, x, y)
+					f(idx, patch)
+					idx++
+				}
+				idx += (numGos - 1) * outCols
+			}
+		}(i)
 	}
+	wg.Wait()
 }
 
 func copyPatch(dst, src *Tensor, x, y int) {

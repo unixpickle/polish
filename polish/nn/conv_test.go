@@ -41,13 +41,14 @@ func TestPatches(t *testing.T) {
 
 	for i, inputArgs := range inputs {
 		expected := sums[i]
-		var actual []float32
-		Patches(input, inputArgs[0], inputArgs[1], func(t *Tensor) {
+		rows, cols := ConvOutputSize(input.Height, input.Width, inputArgs[0], inputArgs[1])
+		actual := make([]float32, rows*cols)
+		Patches(input, inputArgs[0], inputArgs[1], func(outIdx int, t *Tensor) {
 			var sum float32
 			for _, c := range t.Data {
 				sum += c
 			}
-			actual = append(actual, sum)
+			actual[outIdx] = sum
 		})
 		if len(actual) != len(expected) {
 			t.Errorf("case %d: unexpected length (got %d expected %d)", i,
