@@ -170,7 +170,6 @@ class BilateralDenoiser(Denoiser):
         return 1
 
     def forward(self, x):
-        print(self.blur_sigma, self.diff_sigma)
         if self.incident:
             x = x[:, :3]
         # Create patches tensor: [N x C x K^2 x H x W]
