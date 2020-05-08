@@ -43,8 +43,8 @@ func (m ModelType) Layer() nn.Layer {
 		return &nn.Bilateral{
 			// Parameters optimized on the training set
 			// with SGD.
-			SigmaBlur: 1.6724,
-			SigmaDiff: 0.3980,
+			SigmaBlur: 1.7016,
+			SigmaDiff: 0.4821,
 
 			KernelSize: 15,
 		}
