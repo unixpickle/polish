@@ -97,7 +97,7 @@ func (d *Deconv) iteratePatches(t *Tensor, f func(tmp *Tensor, x, y int, data []
 					f(tmp, x, y, t.Data[idx:idx+t.Depth])
 					idx += t.Depth
 				}
-				idx += (numGos - 1) * t.Width
+				idx += (numGos - 1) * t.Width * t.Depth
 			}
 		}(i)
 	}
