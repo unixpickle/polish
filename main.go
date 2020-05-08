@@ -15,7 +15,7 @@ import (
 
 func main() {
 	var model string
-	flag.StringVar(&model, "model", "deep", "type of model to use ('shallow' or 'deep')")
+	flag.StringVar(&model, "model", "deep", "type of model to use ('shallow', 'deep', 'bilateral')")
 	flag.Usage = func() {
 		fmt.Fprintln(os.Stderr, "Usage: "+os.Args[0]+" [flags] <input.png> <output.png>")
 		fmt.Fprintln(os.Stderr)
@@ -34,6 +34,8 @@ func main() {
 		modelType = polish.ModelTypeShallow
 	} else if model == "deep" {
 		modelType = polish.ModelTypeDeep
+	} else if model == "bilateral" {
+		modelType = polish.ModelTypeBilateral
 	} else {
 		flag.Usage()
 	}

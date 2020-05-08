@@ -5,11 +5,15 @@ import "github.com/unixpickle/polish/polish/nn"
 type ModelType int
 
 const (
+	// ModelTypeBilateral uses a tuned bilateral filter to
+	// denoise the image without a neural network.
+	ModelTypeBilateral ModelType = iota
+
 	// ModelTypeShallow is a small convolutional network
 	// that operates only on the pixels of an RGB image.
 	//
 	// It is fast, but the smoothing is very primitive.
-	ModelTypeShallow ModelType = iota
+	ModelTypeShallow
 
 	// ModelTypeDeep is a large convolutional network that
 	// operates only on the pixels of an RGB image.
@@ -22,7 +26,7 @@ const (
 // images fed to this type of model.
 func (m ModelType) LCD() int {
 	switch m {
-	case ModelTypeShallow:
+	case ModelTypeShallow, ModelTypeBilateral:
 		return 1
 	case ModelTypeDeep:
 		return 4
@@ -35,6 +39,15 @@ func (m ModelType) LCD() int {
 // model.
 func (m ModelType) Layer() nn.Layer {
 	switch m {
+	case ModelTypeBilateral:
+		return &nn.Bilateral{
+			// Parameters optimized on the training set
+			// with SGD.
+			SigmaBlur: 1.6724,
+			SigmaDiff: 0.3980,
+
+			KernelSize: 15,
+		}
 	case ModelTypeShallow:
 		return createShallow()
 	case ModelTypeDeep:
