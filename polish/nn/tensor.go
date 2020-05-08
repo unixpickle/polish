@@ -49,6 +49,15 @@ func (t *Tensor) At(y, x, z int) *float32 {
 	return &t.Data[z+t.Depth*(x+y*t.Width)]
 }
 
+// Add adds a scalar to every entry.
+func (t *Tensor) Add(s float32) *Tensor {
+	res := NewTensor(t.Height, t.Width, t.Depth)
+	for i, x := range t.Data {
+		res.Data[i] = x + s
+	}
+	return res
+}
+
 // Pad creates a zero-padded version of the Tensor.
 func (t *Tensor) Pad(top, right, bottom, left int) *Tensor {
 	res := NewTensor(t.Height+top+bottom, t.Width+left+right, t.Depth)

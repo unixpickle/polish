@@ -20,7 +20,9 @@ func (b *Bilateral) Apply(t *Tensor) *Tensor {
 		}
 	}
 
-	padded := t.Pad(center, center, center, center)
+	// Pad with very large negative numbers to prevent
+	// the filter from incorporating the padding.
+	padded := t.Add(100).Pad(center, center, center, center).Add(-100)
 	out := NewTensor(t.Height, t.Width, t.Depth)
 	Patches(padded, b.KernelSize, 1, func(idx int, patch *Tensor) {
 		b.blurPatch(distances, patch, out.Data[idx*out.Depth:(idx+1)*out.Depth])

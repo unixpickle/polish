@@ -172,9 +172,12 @@ class BilateralDenoiser(Denoiser):
     def forward(self, x):
         if self.incident:
             x = x[:, :3]
+
         # Create patches tensor: [N x C x K^2 x H x W]
         padding = self.filter_size // 2
-        padded = F.pad(x, [padding] * 4)
+        # Pad with huge negative values instead of zeros
+        # so that the filter does not include the padding.
+        padded = F.pad(x + 100, [padding] * 4) - 100
         patches = F.unfold(padded, self.filter_size)
         patches = patches.view(*x.shape[:2], self.filter_size**2, *x.shape[2:])
 
