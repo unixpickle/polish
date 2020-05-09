@@ -41,12 +41,16 @@ For example, you could use the built-in deep CNN model as follows:
 output := polish.PolishImage(polish.ModelTypeDeep, input)
 ```
 
-# Getting data
+# Training your own models
 
-The [create_dataset](create_dataset) directory contains a Go program that creates random scenes and renders them to produce a denoising dataset. It expects to use models from [ModelNet40](https://modelnet.cs.princeton.edu/), and textures from ImageNet (or any directory of images, really). It generates scenes by selecting a layout type (either a boxed room, or a large dome), randomizing lighting, loading and positioning various 3D models, and selecting random textures and materials for all models and walls.
+The built-in pre-trained models should be sufficient for most use cases. However, if you do need to train your own model, this repository includes everything needed to create a dataset and train a model on it.
 
-Creating the dataset is rather costly, since it involves ray tracing many random and complex scenes to convergence. I will soon provide a premade dataset that can be used as the standard choice.
+## Getting data
 
-# Training
+You will likely want to get started by downloading the ~1GB [data_608.tar](https://polish.aqnichol.com/data_608.tar) dataset, which includes 608 rendered scenes. Creating this dataset took 4,600 CPU hours, which translates to roughly 20 days on an average workstation.
+
+The dataset was created with the [create_dataset](create_dataset) program, which creates random scenes and renders them at various rays-per-pixel. It expects to use models from [ModelNet40](https://modelnet.cs.princeton.edu/), and textures from ImageNet (or any directory of images, really). It generates scenes by selecting a layout type (either a boxed room or a large dome), randomizing lighting, loading and positioning various 3D models, and selecting random textures and materials for all models and walls.
+
+## Training with PyTorch
 
 The [training](training) directory contains a Python program to train a denoising neural network. It processes data produced by `create_dataset`, and automatically performs data augmentation and other tricks using that data. It includes a Jupyter notebook for converting the finished PyTorch models into Go source files that can be integrated into the Go package.
