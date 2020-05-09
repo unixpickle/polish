@@ -15,6 +15,7 @@ def main():
         raise ValueError('unknown model: ' + args.model_type)
     model = models[args.model_type]
     model.load_state_dict(torch.load(args.model_path, map_location='cpu'))
+    model.eval()
 
     img_in = torch.from_numpy(np.array(Image.open(args.image_in))).float() / 255.0
     img_in = img_in.permute(2, 0, 1)

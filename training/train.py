@@ -37,7 +37,9 @@ def main():
 
         train_loss = model.loss(train_in, train_out)
         with torch.no_grad():
+            model.eval()
             test_loss = model.loss(test_in, test_out)
+            model.train()
 
         opt.zero_grad()
         train_loss.backward()
@@ -46,7 +48,9 @@ def main():
         if not i % args.save_interval:
             torch.save(model.state_dict(), args.model_path)
             with torch.no_grad():
+                model.eval()
                 test_pred = model(test_in)
+                model.train()
                 save_rendering(test_in, test_pred)
 
         print('step %d: train=%f test=%f' % (i, train_loss.item(), test_loss.item()))
