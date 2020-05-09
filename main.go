@@ -5,6 +5,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"image"
 	"image/png"
 	"os"
 
@@ -15,7 +16,12 @@ import (
 
 func main() {
 	var model string
+	var patchSize int
+	var patchBorder int
 	flag.StringVar(&model, "model", "deep", "type of model to use ('shallow', 'deep', 'bilateral')")
+	flag.IntVar(&patchSize, "patch", 0, "image patch size to process at once (0 to disable)")
+	flag.IntVar(&patchBorder, "patch-border", -1, "border for image patches (-1 uses default)")
+
 	flag.Usage = func() {
 		fmt.Fprintln(os.Stderr, "Usage: "+os.Args[0]+" [flags] <input.png> <output.png>")
 		fmt.Fprintln(os.Stderr)
@@ -49,7 +55,12 @@ func main() {
 	inImage, err := png.Decode(r)
 	essentials.Must(err)
 
-	outImage := polish.PolishImage(modelType, inImage)
+	var outImage image.Image
+	if patchSize != 0 {
+		outImage = polish.PolishImagePatches(modelType, inImage, patchSize, patchBorder)
+	} else {
+		outImage = polish.PolishImage(modelType, inImage)
+	}
 
 	w, err := os.Create(outPath)
 	essentials.Must(err)
