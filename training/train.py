@@ -17,7 +17,7 @@ def main():
 
     args = arg_parser().parse_args()
 
-    models = all_models(incident=args.incident)
+    models = all_models(aux=args.aux)
     if args.model_type not in models:
         raise ValueError('unknown model: ' + args.model_type)
     model = models[args.model_type]
@@ -25,7 +25,7 @@ def main():
         model.load_state_dict(torch.load(args.model_path, map_location='cpu'))
     model.to(device)
 
-    trains, tests = create_datasets(args.data, args.batch, incident=args.incident)
+    trains, tests = create_datasets(args.data, args.batch, aux=args.aux)
     print('baseline: train %f, test %f' % (identity_baseline(trains), identity_baseline(tests)))
 
     opt = optim.Adam(model.parameters(), lr=args.lr)
@@ -73,7 +73,7 @@ def save_rendering(inputs, outputs):
 def arg_parser():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--data', default='../data')
-    parser.add_argument('--incident', action='store_true')
+    parser.add_argument('--aux', action='store_true')
     parser.add_argument('--model-path', default='model.pt')
     parser.add_argument('--model-type', default='shallow')
     parser.add_argument('--save-interval', default=10, type=int)

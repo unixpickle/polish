@@ -8,10 +8,10 @@ import torch.utils.data as data
 
 
 class PolishDataset(data.IterableDataset):
-    def __init__(self, data_dir, train=True, incident=False, crop_size=192, samples=(128, 512)):
+    def __init__(self, data_dir, train=True, aux=False, crop_size=192, samples=(128, 512)):
         self.crop_size = crop_size
         self.samples = samples
-        self.incident = incident
+        self.aux = aux
         all_dirs = [x for x in os.listdir(data_dir)
                     if os.path.isdir(os.path.join(data_dir, x)) and not x.startswith('.')]
         test_prefixes = 'abcd'
@@ -38,9 +38,10 @@ class PolishDataset(data.IterableDataset):
         aug = Augmentation(inputs.shape[0], self.crop_size)
         inputs = aug(inputs)
         outputs = aug(outputs)
-        if self.incident:
+        if self.aux:
             incident = np.array(Image.open(os.path.join(path, 'incidence.png')))[..., None]
-            inputs = torch.cat([inputs, aug(incident)], dim=0)
+            albedo = np.array(Image.open(os.path.join(path, 'albedo.png')))
+            inputs = torch.cat([inputs, aug(albedo), aug(incident)], dim=0)
         return inputs, outputs
 
 
