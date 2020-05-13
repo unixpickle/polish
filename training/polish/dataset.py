@@ -8,10 +8,12 @@ import torch.utils.data as data
 
 
 class PolishDataset(data.IterableDataset):
-    def __init__(self, data_dir, train=True, aux=False, crop_size=192, samples=(128, 512)):
+    def __init__(self, data_dir, train=True, aux=False, crop_size=192, samples=(128, 512),
+                 extra_aug=False):
         self.crop_size = crop_size
         self.samples = samples
         self.aux = aux
+        self.extra_aug = extra_aug
         all_dirs = [x for x in os.listdir(data_dir)
                     if os.path.isdir(os.path.join(data_dir, x)) and not x.startswith('.')]
         test_prefixes = 'abcd'
@@ -35,7 +37,7 @@ class PolishDataset(data.IterableDataset):
         input_case = random.choice(self.samples)
         outputs = np.array(Image.open(os.path.join(path, 'target.png')))
         inputs = np.array(Image.open(os.path.join(path, 'input_%d.png' % input_case)))
-        aug = Augmentation(inputs.shape[0], self.crop_size)
+        aug = Augmentation(inputs.shape[0], self.crop_size, self.extra_aug)
         inputs = aug(inputs)
         outputs = aug(outputs)
         if self.aux:
@@ -51,12 +53,20 @@ class Augmentation:
     samples.
     """
 
-    def __init__(self, img_size, crop_size):
+    def __init__(self, img_size, crop_size, extra_aug):
         self.img_size = img_size
         self.crop_size = crop_size
         self.x = random.randrange(img_size - crop_size)
         self.y = random.randrange(img_size - crop_size)
-        self.flip = random.random() < 0.5
+        self.flip_x = random.random() < 0.5
+        self.channel_perm = [0, 1, 2]
+        if extra_aug:
+            self.flip_y = random.random() < 0.5
+            self.rotation = random.randrange(4)
+            random.shuffle(self.channel_perm)
+        else:
+            self.flip_y = False
+            self.rotation = 0
         self.mask = (np.random.uniform(size=(img_size, img_size, 1)) > 0.5).astype('float32')
 
     def __call__(self, x):
@@ -67,6 +77,18 @@ class Augmentation:
             # data.
             x = x[:, :self.img_size]*self.mask + x[:, self.img_size:]*(1-self.mask)
         x = x[self.y:, self.x:][:self.crop_size, :self.crop_size]
-        if self.flip:
+        for i in range(self.rotation):
+            x = np.transpose(x, axes=[1, 0, 2])
+            x = x[::-1]
+        if self.flip_x:
             x = x[:, ::-1]
+        if self.flip_y:
+            x = x[::-1]
+
+        x_copy = np.array(x)
+        for i, p in enumerate(self.channel_perm):
+            x[..., i] = x_copy[..., self.channel_perm[i]]
+            if len(x.shape) > 3:
+                x[..., i+3] = x_copy[..., self.channel_perm[i]+3]
+
         return torch.from_numpy(np.array(x)).permute(2, 0, 1).contiguous()
