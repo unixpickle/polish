@@ -51,7 +51,7 @@ def main():
                 model.eval()
                 test_pred = model(test_in)
                 model.train()
-                save_rendering(test_in, test_pred)
+                save_rendering(test_in, test_pred, test_out)
 
         print('step %d: train=%f test=%f' % (i, train_loss.item(), test_loss.item()))
         i += 1
@@ -66,8 +66,8 @@ def create_datasets(data_dir, batch, **kwargs):
     return train_loader, test_loader
 
 
-def save_rendering(inputs, outputs):
-    joined = torch.cat([inputs[:, :3], outputs], dim=-1).permute(0, 2, 3, 1).contiguous()
+def save_rendering(inputs, outputs, targets):
+    joined = torch.cat([inputs[:, :3], outputs, targets], dim=-1).permute(0, 2, 3, 1).contiguous()
     joined = joined.view(-1, *joined.shape[2:])
     arr = joined.detach().cpu().numpy()
     arr = np.clip(arr, 0, 1)
