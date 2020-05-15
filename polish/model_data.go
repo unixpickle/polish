@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io/ioutil"
+	"math"
 
 	"github.com/unixpickle/essentials"
 	"github.com/unixpickle/polish/polish/nn"
@@ -103,6 +104,25 @@ func loadDepthSepConv(p map[string][]float32, key string,
 			Weights:    p[key+".depthwise.weight"],
 		},
 		&nn.Bias{Data: p[key+".depthwise.bias"]},
+	}
+}
+
+func loadBatchNorm(p map[string][]float32, key string) nn.Layer {
+	mean := p[key+".running_mean"]
+	variance := p[key+".running_var"]
+	weight := p[key+".weight"]
+	bias := p[key+".bias"]
+
+	scale := make([]float32, len(variance))
+	offset := make([]float32, len(variance))
+	for i, x := range variance {
+		invStd := float32(1.0 / math.Sqrt(float64(x+1e-5)))
+		scale[i] = weight[i] * invStd
+		offset[i] = bias[i] - mean[i]*invStd
+	}
+	return nn.NN{
+		&nn.Mul{Data: scale},
+		&nn.Bias{Data: offset},
 	}
 }
 
