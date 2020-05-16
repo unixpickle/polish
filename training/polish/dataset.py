@@ -85,10 +85,9 @@ class Augmentation:
         if self.flip_y:
             x = x[::-1]
 
-        x_copy = np.array(x)
-        for i, p in enumerate(self.channel_perm):
-            x[..., i] = x_copy[..., self.channel_perm[i]]
-            if len(x.shape) > 3:
-                x[..., i+3] = x_copy[..., self.channel_perm[i]+3]
+        if x.shape[2] == 3:
+            x_copy = np.array(x)
+            for i, p in enumerate(self.channel_perm):
+                x[..., i] = x_copy[..., self.channel_perm[i]]
 
         return torch.from_numpy(np.array(x)).permute(2, 0, 1).contiguous()
