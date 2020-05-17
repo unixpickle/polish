@@ -107,7 +107,7 @@ class DeepDenoiser(Denoiser):
     A denoiser that has multiple hidden layers.
     """
 
-    def __init__(self, aux=False, conv2d=SepConv2d, batch_norm=False):
+    def __init__(self, aux=False, conv2d=SepConv2d, batch_norm=True):
         super().__init__()
         self.conv1 = nn.Conv2d(3 + AUX_FEATURE_CHANNELS if aux else 3,
                                64, 5, padding=2, stride=2)
