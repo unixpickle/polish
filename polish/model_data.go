@@ -33,9 +33,7 @@ func createDeep() nn.Layer {
 	for i := 0; i < 4; i++ {
 		layer := fmt.Sprintf("residuals.%d", i)
 		result = append(result, nn.Residual{
-			&nn.GroupNorm{NumGroups: 8},
-			&nn.Mul{Data: params[layer+".0.weight"]},
-			&nn.Bias{Data: params[layer+".0.bias"]},
+			loadBatchNorm(params, layer+".0"),
 			nn.ReLU{},
 			loadDepthSepConv(params, layer+".2", 3, 1, 128, 256),
 			nn.ReLU{},
@@ -108,7 +106,10 @@ func loadDepthSepConv(p map[string][]float32, key string,
 }
 
 func loadBatchNorm(p map[string][]float32, key string) nn.Layer {
-	mean := p[key+".running_mean"]
+	negMean := append([]float32{}, p[key+".running_mean"]...)
+	for i, x := range negMean {
+		negMean[i] = -x
+	}
 	variance := p[key+".running_var"]
 	weight := p[key+".weight"]
 	bias := p[key+".bias"]
@@ -118,9 +119,10 @@ func loadBatchNorm(p map[string][]float32, key string) nn.Layer {
 	for i, x := range variance {
 		invStd := float32(1.0 / math.Sqrt(float64(x+1e-5)))
 		scale[i] = weight[i] * invStd
-		offset[i] = bias[i] - mean[i]*invStd
+		offset[i] = bias[i]
 	}
 	return nn.NN{
+		&nn.Bias{Data: negMean},
 		&nn.Mul{Data: scale},
 		&nn.Bias{Data: offset},
 	}
