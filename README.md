@@ -4,7 +4,7 @@ This is a simple deep learning system for denoising ray traced images.
 
 ![Side-by-side of noisy and denoised images](example/half_and_half.png)
 
-The above image was rendered with 50 rays-per-pixel, and then denoised in RGB space with a deep neural network. For more examples, see [the Examples section](#examples)
+The above image was rendered with 50 rays-per-pixel, and then denoised in RGB space with a deep neural network. For more, see [the example below](#example).
 
 This repository includes:
 
@@ -61,7 +61,7 @@ The dataset was created with the [create_dataset](create_dataset) program, which
 
 The [training](training) directory contains a Python program to train a denoising neural network. It processes data produced by `create_dataset`, and automatically performs data augmentation and other tricks using that data. It includes a Jupyter notebook for converting the finished PyTorch models into Go source files that can be integrated into the Go package.
 
-# Examples
+# Example
 
 Here is a noisy rendering, produced from the [model3d](https://github.com/unixpickle/model3d) showcase with 50 rays-per-pixel:
 
@@ -77,8 +77,6 @@ Obviously, it'd be nice if we didn't need so much more compute to produce a clea
 $ polish example/50_rpp.png example/denoised_deep.png
 ```
 
-Here is the denoised version of the 50 rpp image:
-
 ![Denoised 50 rpp](example/denoised_deep.png)
 
 This denoising took place using only RGB values from the original image. We could also use albedo maps and incidence angles, which are auxiliary channels looking like this:
@@ -87,7 +85,7 @@ This denoising took place using only RGB values from the original image. We coul
 
 ![Incidence angles](example/incidence.png)
 
-The `polish` API can generate these images for a scene, and can denoise using these features. However, currently polish only has one model that supports auxiliary features, and it is a shallow network which doesn't work as well as the deep one in general.
+The `polish` API can generate these images for a scene, and can denoise using these features. Currently, however, `polish` only has one model that supports auxiliary features, and it is a shallow network which doesn't work as well as the deep one in general. In the future, a deep auxiliary model will be added.
 
 ```
 polish -model shallow-aux -incidence example/incidence.png -albedo example/albedo.png example/50_rpp.png example/denoised_shallow_aux.png
