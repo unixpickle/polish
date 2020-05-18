@@ -34,8 +34,42 @@ func PolishImage(t ModelType, img image.Image) image.Image {
 // of redundant computation, while lower values may cause
 // checkerboarding artifacts.
 func PolishImagePatches(t ModelType, img image.Image, patchSize, border int) image.Image {
+	if t.Aux() {
+		panic("model requires auxiliary features")
+	}
 	inTensor := nn.NewTensorRGB(img)
 	outTensor := operatePatches(inTensor, patchSize, border, func(in *nn.Tensor) *nn.Tensor {
+		pad, unpad := padAndUnpad(t, in)
+		outTensor := pad.Apply(in)
+		outTensor = t.Layer().Apply(outTensor)
+		outTensor = unpad.Apply(outTensor)
+		return outTensor
+	})
+	return outTensor.RGB()
+}
+
+// PolishAux applies a denoising network to an image with
+// auxiliary feature channels.
+//
+// The Tensor may be created via CreateAuxTensor().
+//
+// This should be used with a model that expects auxiliary
+// features.
+func PolishAux(t ModelType, auxImage *nn.Tensor) image.Image {
+	patchSize := essentials.MaxInt(auxImage.Width, auxImage.Height)
+	return PolishAuxPatches(t, auxImage, patchSize, 0)
+}
+
+// PolishAuxPatches is like PolishAux, but it applies the
+// operation to patches of the image at a time to save
+// memory.
+//
+// See PolishImagePatches for more information.
+func PolishAuxPatches(t ModelType, auxImage *nn.Tensor, patchSize, border int) image.Image {
+	if !t.Aux() {
+		panic("model does not support auxiliary features")
+	}
+	outTensor := operatePatches(auxImage, patchSize, border, func(in *nn.Tensor) *nn.Tensor {
 		pad, unpad := padAndUnpad(t, in)
 		outTensor := pad.Apply(in)
 		outTensor = t.Layer().Apply(outTensor)

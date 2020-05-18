@@ -10,7 +10,62 @@ import (
 
 	"github.com/unixpickle/model3d/model3d"
 	"github.com/unixpickle/model3d/render3d"
+	"github.com/unixpickle/polish/polish/nn"
 )
+
+// albedoMapSamples is the number of BSDF samples used to
+// estimate a surface's albedo.
+// This should roughly match the sample count used to
+// train the model.
+const albedoMapSamples = 400
+
+// CreateAuxTensor creates a Tensor for a rendering with
+// auxiliary feature channels.
+//
+// This Tensor can then be passed to PolishAux.
+//
+// The channels are ordered as follows:
+//
+//     1. Red
+//     2. Green
+//     3. Blue
+//     4. Albedo red
+//     5. Albedo green
+//     6. Albedo blue
+//     7. Ray-surface cosine map
+//
+func CreateAuxTensor(c *render3d.Camera, obj render3d.Object, img image.Image) *nn.Tensor {
+	b := img.Bounds()
+	w, h := b.Dx(), b.Dy()
+	albedo := CreateAlbedoMap(c, obj, w, h, 400)
+	incidence := CreateIncidenceMap(c, obj, w, h)
+	return CreateAuxTensorImages(img, albedo, incidence)
+}
+
+// CreateAuxTensorImages creates an auxiliary Tensor using
+// pre-constructed auxiliary images.
+//
+// See CreateAuxTensor for details on the channel order.
+func CreateAuxTensorImages(img, albedo, incidence image.Image) *nn.Tensor {
+	b := img.Bounds()
+	w, h := b.Dx(), b.Dy()
+	inTensor := nn.NewTensor(h, w, 7)
+	for y := 0; y < h; y++ {
+		for x := 0; x < w; x++ {
+			red, green, blue, _ := img.At(x+b.Min.X, y+b.Min.Y).RGBA()
+			for i, c := range []uint32{red, green, blue} {
+				*inTensor.At(y, x, i) = float32(c) / 0xffff
+			}
+			red, green, blue, _ = albedo.At(x, y).RGBA()
+			for i, c := range []uint32{red, green, blue} {
+				*inTensor.At(y, x, i+3) = float32(c) / 0xffff
+			}
+			gray, _, _, _ := incidence.At(x, y).RGBA()
+			*inTensor.At(y, x, 6) = float32(gray) / 0xffff
+		}
+	}
+	return inTensor
+}
 
 // CreateIncidenceMap creates a feature image where each
 // pixel indicates the dot product of the camera ray with

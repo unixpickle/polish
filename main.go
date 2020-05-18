@@ -18,9 +18,14 @@ func main() {
 	var model string
 	var patchSize int
 	var patchBorder int
-	flag.StringVar(&model, "model", "deep", "type of model to use ('shallow', 'deep', 'bilateral')")
+	var albedoPath string
+	var incidencePath string
+	flag.StringVar(&model, "model", "deep", "type of model to use "+
+		"('shallow', 'deep', 'shallow-aux', 'bilateral')")
 	flag.IntVar(&patchSize, "patch", 0, "image patch size to process at once (0 to disable)")
 	flag.IntVar(&patchBorder, "patch-border", -1, "border for image patches (-1 uses default)")
+	flag.StringVar(&albedoPath, "albedo", "", "path to albedo map image (for aux models)")
+	flag.StringVar(&incidencePath, "incidence", "", "path to incidence map image (for aux models)")
 
 	flag.Usage = func() {
 		fmt.Fprintln(os.Stderr, "Usage: "+os.Args[0]+" [flags] <input.png> <output.png>")
@@ -42,27 +47,57 @@ func main() {
 		modelType = polish.ModelTypeDeep
 	} else if model == "bilateral" {
 		modelType = polish.ModelTypeBilateral
+	} else if model == "shallow-aux" {
+		modelType = polish.ModelTypeShallowAux
 	} else {
 		flag.Usage()
+	}
+
+	if modelType.Aux() {
+		if incidencePath == "" {
+			fmt.Fprintln(os.Stderr, "auxiliary model requires -incidence flag")
+		}
+		if albedoPath == "" {
+			fmt.Fprintln(os.Stderr, "auxiliary model requires -albedo flag")
+		}
+		if albedoPath == "" || incidencePath == "" {
+			os.Exit(1)
+		}
 	}
 
 	inPath := flag.Args()[0]
 	outPath := flag.Args()[1]
 
-	r, err := os.Open(inPath)
-	essentials.Must(err)
-	defer r.Close()
-	inImage, err := png.Decode(r)
-	essentials.Must(err)
+	inImage := readPNG(inPath)
 
 	var outImage image.Image
-	if patchSize != 0 {
-		outImage = polish.PolishImagePatches(modelType, inImage, patchSize, patchBorder)
+	if !modelType.Aux() {
+		if patchSize != 0 {
+			outImage = polish.PolishImagePatches(modelType, inImage, patchSize, patchBorder)
+		} else {
+			outImage = polish.PolishImage(modelType, inImage)
+		}
 	} else {
-		outImage = polish.PolishImage(modelType, inImage)
+		albedo := readPNG(albedoPath)
+		incidence := readPNG(incidencePath)
+		inTensor := polish.CreateAuxTensorImages(inImage, albedo, incidence)
+		if patchSize != 0 {
+			outImage = polish.PolishAuxPatches(modelType, inTensor, patchSize, patchBorder)
+		} else {
+			outImage = polish.PolishAux(modelType, inTensor)
+		}
 	}
 
 	w, err := os.Create(outPath)
 	essentials.Must(err)
 	essentials.Must(png.Encode(w, outImage))
+}
+
+func readPNG(path string) image.Image {
+	r, err := os.Open(path)
+	essentials.Must(err)
+	defer r.Close()
+	inImage, err := png.Decode(r)
+	essentials.Must(err)
+	return inImage
 }

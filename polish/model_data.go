@@ -21,6 +21,15 @@ func createShallow() nn.Layer {
 	}
 }
 
+func createShallowAux() nn.Layer {
+	params := readParameterZip(shallowAuxModelZipData)
+	return nn.NN{
+		loadConv(params, "conv1", 5, 1, 7, 32),
+		nn.ReLU{},
+		loadConv(params, "conv2", 5, 1, 32, 3),
+	}
+}
+
 func createDeep() nn.Layer {
 	params := readParameterZip(deepModelZipData)
 

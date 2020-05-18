@@ -20,13 +20,18 @@ const (
 	//
 	// It is slow and performs a great deal of smoothing.
 	ModelTypeDeep
+
+	// ModelTypeShallowAux is like ModelTypeShallow, but
+	// the model expects albedo and ray incidence angles
+	// as extra input channels.
+	ModelTypeShallowAux
 )
 
 // LCD gets a factor which must divide the dimensions of
 // images fed to this type of model.
 func (m ModelType) LCD() int {
 	switch m {
-	case ModelTypeShallow, ModelTypeBilateral:
+	case ModelTypeBilateral, ModelTypeShallow, ModelTypeShallowAux:
 		return 1
 	case ModelTypeDeep:
 		return 4
@@ -52,7 +57,14 @@ func (m ModelType) Layer() nn.Layer {
 		return createShallow()
 	case ModelTypeDeep:
 		return createDeep()
+	case ModelTypeShallowAux:
+		return createShallowAux()
 	default:
 		panic("unknown model type")
 	}
+}
+
+// Aux checks if the model requires auxiliary features.
+func (m ModelType) Aux() bool {
+	return m == ModelTypeShallowAux
 }
