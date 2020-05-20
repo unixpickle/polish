@@ -13,13 +13,17 @@ def main():
     if args.model_type not in models:
         raise ValueError('unknown model: ' + args.model_type)
     model = models[args.model_type]
+    # Get running stats going.
+    model.train()
+    for i in range(3):
+        model(torch.randn(4, 3, 64, 64))
     model.eval()
 
     # Set all biases and scales high to avoid
     # hitting ReLUs.
     for p in model.parameters():
         if len(p.shape) == 1:
-            p.data.detach().fill_(4.0)
+            p.data.detach().fill_(100.0)
 
     image = nn.Parameter(torch.randn(3, 512, 512))
     out = model(image[None])
