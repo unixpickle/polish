@@ -40,6 +40,23 @@ func (m ModelType) LCD() int {
 	}
 }
 
+// RF gets the radius of the receptive field of the model.
+//
+// The radius is the maximum number of pixels to the left,
+// right, top, or bottom that the model can "see".
+func (m ModelType) RF() int {
+	switch m {
+	case ModelTypeBilateral:
+		return 7
+	case ModelTypeShallow, ModelTypeShallowAux:
+		return 4
+	case ModelTypeDeep:
+		return 42
+	default:
+		panic("unknown model type")
+	}
+}
+
 // Layer creates a pre-trained layer implementing this
 // model.
 func (m ModelType) Layer() nn.Layer {
