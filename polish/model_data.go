@@ -30,11 +30,17 @@ func createShallowAux() nn.Layer {
 	}
 }
 
-func createDeep() nn.Layer {
-	params := readParameterZip(deepModelZipData)
+func createDeep(aux bool) nn.Layer {
+	paramData := deepModelZipData
+	inChannels := 3
+	if aux {
+		paramData = deepAuxModelZipData
+		inChannels = 7
+	}
+	params := readParameterZip(paramData)
 
 	result := nn.NN{
-		loadConv(params, "conv1", 5, 2, 3, 64),
+		loadConv(params, "conv1", 5, 2, inChannels, 64),
 		nn.ReLU{},
 		loadDepthSepConv(params, "conv2", 5, 2, 64, 128),
 	}

@@ -25,6 +25,11 @@ const (
 	// the model expects albedo and ray incidence angles
 	// as extra input channels.
 	ModelTypeShallowAux
+
+	// ModelTypeDeepAux is like ModelTypeDeep, but the
+	// model expects albedo and ray incidence angles as
+	// extra input channels.
+	ModelTypeDeepAux
 )
 
 // LCD gets a factor which must divide the dimensions of
@@ -33,7 +38,7 @@ func (m ModelType) LCD() int {
 	switch m {
 	case ModelTypeBilateral, ModelTypeShallow, ModelTypeShallowAux:
 		return 1
-	case ModelTypeDeep:
+	case ModelTypeDeep, ModelTypeDeepAux:
 		return 4
 	default:
 		panic("unknown model type")
@@ -50,7 +55,7 @@ func (m ModelType) RF() int {
 		return 7
 	case ModelTypeShallow, ModelTypeShallowAux:
 		return 4
-	case ModelTypeDeep:
+	case ModelTypeDeep, ModelTypeDeepAux:
 		return 42
 	default:
 		panic("unknown model type")
@@ -73,9 +78,11 @@ func (m ModelType) Layer() nn.Layer {
 	case ModelTypeShallow:
 		return createShallow()
 	case ModelTypeDeep:
-		return createDeep()
+		return createDeep(false)
 	case ModelTypeShallowAux:
 		return createShallowAux()
+	case ModelTypeDeepAux:
+		return createDeep(true)
 	default:
 		panic("unknown model type")
 	}
@@ -83,5 +90,5 @@ func (m ModelType) Layer() nn.Layer {
 
 // Aux checks if the model requires auxiliary features.
 func (m ModelType) Aux() bool {
-	return m == ModelTypeShallowAux
+	return m == ModelTypeShallowAux || m == ModelTypeDeepAux
 }

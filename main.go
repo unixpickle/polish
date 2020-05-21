@@ -21,7 +21,7 @@ func main() {
 	var albedoPath string
 	var incidencePath string
 	flag.StringVar(&model, "model", "deep", "type of model to use "+
-		"('shallow', 'deep', 'shallow-aux', 'bilateral')")
+		"('shallow', 'deep', 'shallow-aux', 'deep-aux', 'bilateral')")
 	flag.IntVar(&patchSize, "patch", 0, "image patch size to process at once (0 to disable)")
 	flag.IntVar(&patchBorder, "patch-border", -1, "border for image patches (-1 uses default)")
 	flag.StringVar(&albedoPath, "albedo", "", "path to albedo map image (for aux models)")
@@ -49,6 +49,8 @@ func main() {
 		modelType = polish.ModelTypeBilateral
 	} else if model == "shallow-aux" {
 		modelType = polish.ModelTypeShallowAux
+	} else if model == "deep-aux" {
+		modelType = polish.ModelTypeDeepAux
 	} else {
 		flag.Usage()
 	}

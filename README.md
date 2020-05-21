@@ -85,10 +85,10 @@ This denoising took place using only RGB values from the original image. We coul
 
 ![Incidence angles](example/incidence.png)
 
-The `polish` API can generate these images for a scene, and can denoise using these features. Currently, however, `polish` only has one model that supports auxiliary features, and it is a shallow network which doesn't work as well as the deep one in general. In the future, a deep auxiliary model will be added.
+The `polish` API can generate these images for a scene, and can denoise using these features. Here's how you can use the command-line tool to run a deep model with auxiliary input channels:
 
 ```
-polish -model shallow-aux -incidence example/incidence.png -albedo example/albedo.png example/50_rpp.png example/denoised_shallow_aux.png
+polish -model deep-aux -incidence example/incidence.png -albedo example/albedo.png example/50_rpp.png example/denoised_deep_aux.png
 ```
 
-![Shallow denoised with aux](example/denoised_shallow_aux.png)
+![Deep denoised with aux](example/denoised_deep_aux.png)
